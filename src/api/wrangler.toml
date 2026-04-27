@@ -1,0 +1,47 @@
+name = "rjmaishub-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Production routes (configurar DNS de api.rjmais.com → CF)
+# routes = [
+#   { pattern = "api.rjmais.com/*", zone_name = "rjmais.com" }
+# ]
+
+[vars]
+ENVIRONMENT = "development"
+APP_URL = "https://app.rjmais.com"
+
+# D1 database (clientes, sessões, chat history, audit log)
+[[d1_databases]]
+binding = "DB"
+database_name = "rjmaishub"
+database_id = "REPLACE_WITH_D1_ID"
+migrations_dir = "../../migrations"
+
+# KV — sessões cache, rate limit, feature flags
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_WITH_KV_ID"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_RATELIMIT_KV_ID"
+
+# R2 — uploads de documentos (extratos, contratos, comprovantes)
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "rjmaishub-files"
+
+[observability]
+enabled = true
+
+[triggers]
+crons = ["0 6 * * *"]   # 06:00 UTC = 03:00 GMT-3 — sweep de retenção LGPD diário
+
+# Secrets (configurar via `wrangler secret put NAME`):
+# - ANTHROPIC_API_KEY
+# - BETTER_AUTH_SECRET
+# - TURNSTILE_SECRET
+# - RESEND_API_KEY
+# - HUBSPOT_TOKEN

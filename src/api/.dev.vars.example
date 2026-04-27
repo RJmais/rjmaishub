@@ -1,0 +1,6 @@
+# Local dev secrets — NÃO commitar `.dev.vars`. Copie pra .dev.vars e preencha.
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+BETTER_AUTH_SECRET=run-openssl-rand-base64-32
+TURNSTILE_SECRET=0x4xxxx
+RESEND_API_KEY=re_xxxx
+HUBSPOT_TOKEN=pat-na1-xxxx

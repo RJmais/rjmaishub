@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /dashboard
+Disallow: /sofia
+Disallow: /ana
+Disallow: /assessor
+Disallow: /indicar
+Allow: /
+
+Sitemap: https://app.rjmais.com/sitemap.xml

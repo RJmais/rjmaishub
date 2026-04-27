@@ -1,0 +1,54 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm test --if-present
+
+      - name: Build web
+        run: npm run build:web
+
+      - name: Deploy frontend (Cloudflare Pages)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: rjmaishub
+          directory: src/web/dist
+          branch: ${{ github.ref_name }}
+
+      - name: Deploy worker
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: src/api
+          command: deploy --env ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}

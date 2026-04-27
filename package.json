@@ -1,0 +1,35 @@
+{
+  "name": "rjmaishub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RJ+ Hub — app de cliente da assessoria de investimentos RJ+. Cloudflare Pages + Workers.",
+  "workspaces": [
+    "src/web",
+    "src/api"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:web dev:api",
+    "dev:web": "npm --workspace src/web run dev",
+    "dev:api": "npm --workspace src/api run dev",
+    "build": "npm-run-all build:web build:api",
+    "build:web": "npm --workspace src/web run build",
+    "build:api": "npm --workspace src/api run build",
+    "deploy": "npm-run-all deploy:web deploy:api",
+    "deploy:web": "npm --workspace src/web run deploy",
+    "deploy:api": "npm --workspace src/api run deploy",
+    "lint": "npm-run-all lint:web lint:api",
+    "lint:web": "npm --workspace src/web run lint",
+    "lint:api": "npm --workspace src/api run lint",
+    "test": "npm-run-all test:web test:api",
+    "test:web": "npm --workspace src/web run test",
+    "test:api": "npm --workspace src/api run test",
+    "db:migrate:local": "npm --workspace src/api run db:migrate:local",
+    "db:migrate:prod": "npm --workspace src/api run db:migrate:prod"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

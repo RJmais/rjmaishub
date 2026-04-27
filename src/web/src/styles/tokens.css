@@ -1,0 +1,133 @@
+/* RJ+ Design Tokens — fonte da verdade: BRAND.md
+ * Paleta oficial confirmada pela Diretora em 14/04/2026.
+ * NÃO alterar sem aprovação.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Verdana&display=swap");
+
+@font-face {
+  font-family: "Fahwang";
+  src: url("/fonts/Fahwang-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fahwang";
+  src: url("/fonts/Fahwang-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Brand colors */
+  --rj-green-primary: #3d4b2e;
+  --rj-green-dark: #2a3820;
+  --rj-beige-bg: #eee8dc;
+  --rj-beige-accent: #cdb98b;
+  --rj-gold: #b8923e;
+  --rj-gold-soft: #d4ad5a;
+  --rj-near-black: #1d1d1d;
+  --rj-white: #ffffff;
+
+  /* Semantic */
+  --bg: var(--rj-beige-bg);
+  --surface: #ffffff;
+  --surface-2: #f8f4ec;
+  --text: var(--rj-near-black);
+  --text-muted: #5a5a5a;
+  --text-on-dark: var(--rj-white);
+  --border: #e0d8c5;
+  --primary: var(--rj-green-primary);
+  --primary-hover: #2f3b22;
+  --accent: var(--rj-gold);
+  --accent-hover: #a17e30;
+  --danger: #b3361f;
+  --success: #4a6a35;
+  --warning: #c08a13;
+
+  /* Typography */
+  --font-display: "Fahwang", "Trajan Pro", Georgia, serif;
+  --font-body: "Verdana", "Geneva", Tahoma, sans-serif;
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+  --fs-3xl: 2.5rem;
+  --fs-hero: 3rem;
+
+  --lh-tight: 1.15;
+  --lh-base: 1.55;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(29, 29, 29, 0.06);
+  --shadow-md: 0 4px 12px rgba(29, 29, 29, 0.08);
+  --shadow-lg: 0 12px 40px rgba(29, 29, 29, 0.16);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 150ms;
+  --dur-base: 240ms;
+
+  /* Layout */
+  --container-max: 1200px;
+  --header-h: 64px;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: var(--rj-green-dark);
+    --surface: #243019;
+    --surface-2: #1f2a16;
+    --text: var(--rj-white);
+    --text-muted: #c2c2b8;
+    --border: #3a4a2e;
+  }
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: var(--lh-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  line-height: var(--lh-tight);
+  color: var(--rj-green-dark);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
