@@ -16,16 +16,16 @@ SUPABASE_URL = "https://gkfodtylflcpsqzshrbu.supabase.co"
 # KV — sessões cache, rate limit, feature flags
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "REPLACE_WITH_KV_ID"
+id = "ba1c57155b9947ea99253bf9e2271618"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "REPLACE_WITH_RATELIMIT_KV_ID"
+id = "274f6aecd54d4bbbafc9e7708e7f2ea4"
 
 # R2 — uploads de documentos (extratos, contratos, comprovantes)
-[[r2_buckets]]
-binding = "FILES"
-bucket_name = "rjmaishub-files"
+# [[r2_buckets]]
+# binding = "FILES"
+# bucket_name = "rjmaishub-files"
 
 [observability]
 enabled = true
