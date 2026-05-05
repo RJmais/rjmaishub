@@ -5,6 +5,9 @@ import type { Env } from "../index";
 import { requireAuth } from "../middleware/auth";
 import { logAudit } from "../lib/audit";
 import { randomToken } from "../lib/crypto";
+import { getDb } from "../db/client";
+import { eventsRsvp } from "../db/schema";
+import { eq } from "drizzle-orm";
 
 const rsvpSchema = z.object({
   status: z.enum(["yes", "maybe", "no"]),
@@ -48,14 +51,12 @@ export const events = new Hono<{
 
   .get("/", async (c) => {
     const user = c.var.user;
-    const rsvps = await c.env.DB.prepare(
-      `SELECT event_slug, status FROM events_rsvp WHERE user_id = ?`
-    )
-      .bind(user.id)
-      .all<{ event_slug: string; status: string }>();
-    const rsvpMap = new Map(
-      (rsvps.results ?? []).map((r) => [r.event_slug, r.status])
-    );
+    const db = getDb(c.env);
+    const rsvps = await db
+      .select({ eventSlug: eventsRsvp.eventSlug, status: eventsRsvp.status })
+      .from(eventsRsvp)
+      .where(eq(eventsRsvp.userId, user.id));
+    const rsvpMap = new Map(rsvps.map((r) => [r.eventSlug, r.status]));
     return c.json({
       items: MOCK_EVENTS.map((e) => ({
         ...e,
@@ -72,14 +73,20 @@ export const events = new Hono<{
       return c.json({ error: "event_not_found" }, 404);
     }
     const now = ts();
-    // upsert
-    await c.env.DB.prepare(
-      `INSERT INTO events_rsvp (id, user_id, event_slug, status, created_at)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(user_id, event_slug) DO UPDATE SET status = excluded.status, created_at = excluded.created_at`
-    )
-      .bind(randomToken(16), user.id, slug, body.status, now)
-      .run();
+    const db = getDb(c.env);
+    await db
+      .insert(eventsRsvp)
+      .values({
+        id: randomToken(16),
+        userId: user.id,
+        eventSlug: slug,
+        status: body.status,
+        createdAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [eventsRsvp.userId, eventsRsvp.eventSlug],
+        set: { status: body.status, createdAt: now },
+      });
     await logAudit(c.env, {
       userId: user.id,
       action: "events.rsvp",

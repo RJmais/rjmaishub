@@ -9,8 +9,8 @@
     "deploy": "wrangler deploy",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:migrate:prod": "wrangler d1 migrations apply DB --remote"
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "hono": "^4.6.0",
@@ -18,12 +18,15 @@
     "@hono/zod-validator": "^0.2.2",
     "otpauth": "^9.3.2",
     "qrcode": "^1.5.4",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "drizzle-orm": "^0.36.0",
+    "postgres": "^3.4.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240924.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "drizzle-kit": "^0.28.0",
     "eslint": "^9.7.0",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5",

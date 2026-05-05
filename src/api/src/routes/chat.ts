@@ -6,6 +6,9 @@ import { requireAuth } from "../middleware/auth";
 import { rateLimit, clientIp } from "../middleware/rateLimit";
 import { logAudit } from "../lib/audit";
 import { randomToken } from "../lib/crypto";
+import { getDb } from "../db/client";
+import { userConsents, chatMessages } from "../db/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 const chatSchema = z.object({
   message: z.string().min(1).max(4000),
@@ -50,11 +53,18 @@ async function streamAssistant(
   if (!ok) return c.json({ error: "rate_limited" }, 429);
 
   // Verificar consentimento ai_chat (linha mais recente da categoria)
-  const consentCheck = await env.DB.prepare(
-    "SELECT status FROM user_consents WHERE user_id = ? AND category = 'ai_chat' ORDER BY granted_at DESC LIMIT 1"
-  )
-    .bind(userId)
-    .first<{ status: string }>();
+  const db = getDb(env);
+  const [consentCheck] = await db
+    .select({ status: userConsents.status })
+    .from(userConsents)
+    .where(
+      and(
+        eq(userConsents.userId, userId),
+        eq(userConsents.category, "ai_chat")
+      )
+    )
+    .orderBy(desc(userConsents.grantedAt))
+    .limit(1);
   const hasConsent = consentCheck?.status === "granted";
 
   const messages = [
@@ -65,19 +75,16 @@ async function streamAssistant(
   // Persistir mensagem do user ANTES do call (não bloqueia stream)
   const userMsgId = randomToken(16);
   if (hasConsent) {
-    await env.DB.prepare(
-      "INSERT INTO chat_messages (id, user_id, assistant, role, content, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-    )
-      .bind(
-        userMsgId,
+    db.insert(chatMessages)
+      .values({
+        id: userMsgId,
         userId,
-        assistantId,
-        "user",
-        body.message,
-        Math.floor(Date.now() / 1000)
-      )
-      .run()
-      .catch((e) => console.error("chat_messages persist error:", e));
+        assistant: assistantId,
+        role: "user",
+        content: body.message,
+        createdAt: Math.floor(Date.now() / 1000),
+      })
+      .catch((e: unknown) => console.error("chat_messages persist error:", e));
   }
 
   const upstream = await fetch("https://api.anthropic.com/v1/messages", {
@@ -115,21 +122,21 @@ async function streamAssistant(
         controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
         controller.close();
         if (hasConsent && fullText) {
-          const persistPromise = env.DB.prepare(
-            "INSERT INTO chat_messages (id, user_id, assistant, role, content, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-          )
-            .bind(
-              assistantMsgId,
-              userId,
-              assistantId,
-              "assistant",
-              fullText,
-              Math.floor(Date.now() / 1000)
-            )
-            .run()
-            .catch((e) =>
-              console.error("chat_messages assistant persist error:", e)
-            );
+          // Wrap in async IIFE to ensure Promise<void> type for waitUntil
+          const persistPromise = (async () => {
+            try {
+              await db.insert(chatMessages).values({
+                id: assistantMsgId,
+                userId,
+                assistant: assistantId,
+                role: "assistant",
+                content: fullText,
+                createdAt: Math.floor(Date.now() / 1000),
+              });
+            } catch (e) {
+              console.error("chat_messages assistant persist error:", e);
+            }
+          })();
           // ctx.waitUntil mantém Worker vivo até o INSERT completar
           c.executionCtx.waitUntil(persistPromise);
         }
@@ -180,24 +187,39 @@ export const chat = new Hono<{
   .get("/:assistant/history", async (c) => {
     const a = c.req.param("assistant");
     if (a !== "sofia" && a !== "ana") return c.json({ error: "not_found" }, 404);
-    const rows = await c.env.DB.prepare(
-      `SELECT id, role, content, created_at FROM chat_messages
-        WHERE user_id = ? AND assistant = ? AND anonymized = 0
-        ORDER BY created_at DESC LIMIT 50`
-    )
-      .bind(c.var.userId, a)
-      .all();
-    return c.json({ messages: (rows.results ?? []).reverse() });
+    const db = getDb(c.env);
+    const msgs = await db
+      .select({
+        id: chatMessages.id,
+        role: chatMessages.role,
+        content: chatMessages.content,
+        createdAt: chatMessages.createdAt,
+      })
+      .from(chatMessages)
+      .where(
+        and(
+          eq(chatMessages.userId, c.var.userId),
+          eq(chatMessages.assistant, a),
+          eq(chatMessages.anonymized, 0)
+        )
+      )
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(50);
+    return c.json({ messages: msgs.reverse() });
   })
   .delete("/:assistant/history", async (c) => {
     const a = c.req.param("assistant");
     if (a !== "sofia" && a !== "ana") return c.json({ error: "not_found" }, 404);
-    await c.env.DB.prepare(
-      `UPDATE chat_messages SET content = '[anonymized]', anonymized = 1
-        WHERE user_id = ? AND assistant = ?`
-    )
-      .bind(c.var.userId, a)
-      .run();
+    const db = getDb(c.env);
+    await db
+      .update(chatMessages)
+      .set({ content: "[anonymized]", anonymized: 1 })
+      .where(
+        and(
+          eq(chatMessages.userId, c.var.userId),
+          eq(chatMessages.assistant, a)
+        )
+      );
     await logAudit(c.env, {
       userId: c.var.userId,
       action: "chat.history.clear",

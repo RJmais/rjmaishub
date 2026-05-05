@@ -7,6 +7,8 @@ import { logAudit } from "../lib/audit";
 import { randomToken } from "../lib/crypto";
 import { clientIp } from "../middleware/rateLimit";
 import { sendEmail } from "../lib/email";
+import { getDb } from "../db/client";
+import { dpoRequests } from "../db/schema";
 
 const contactSchema = z.object({
   subject: z.string().min(5).max(200),
@@ -27,12 +29,15 @@ export const dpo = new Hono<{
     const id = randomToken(16);
     const now = Math.floor(Date.now() / 1000);
 
-    await c.env.DB.prepare(
-      `INSERT INTO dpo_requests (id, user_id, subject, message, status, created_at)
-       VALUES (?, ?, ?, ?, 'open', ?)`
-    )
-      .bind(id, user.id, body.subject, body.message, now)
-      .run();
+    const db = getDb(c.env);
+    await db.insert(dpoRequests).values({
+      id,
+      userId: user.id,
+      subject: body.subject,
+      message: body.message,
+      status: "open",
+      createdAt: now,
+    });
 
     await logAudit(c.env, {
       userId: user.id,

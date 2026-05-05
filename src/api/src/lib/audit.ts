@@ -1,5 +1,7 @@
 import type { Env } from "../index";
 import { randomToken } from "./crypto";
+import { getDb } from "../db/client";
+import { auditLog } from "../db/schema";
 
 export interface AuditEntry {
   userId?: string | null;
@@ -18,22 +20,17 @@ export interface AuditEntry {
  */
 export async function logAudit(env: Env, entry: AuditEntry): Promise<void> {
   try {
-    await env.DB.prepare(
-      `INSERT INTO audit_log
-        (id, user_id, action, resource, ip, user_agent, meta_json, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
-        randomToken(16),
-        entry.userId ?? null,
-        entry.action,
-        entry.resource ?? null,
-        entry.ip ?? null,
-        entry.userAgent ?? null,
-        entry.meta ? JSON.stringify(entry.meta) : null,
-        Math.floor(Date.now() / 1000)
-      )
-      .run();
+    const db = getDb(env);
+    await db.insert(auditLog).values({
+      id: randomToken(16),
+      userId: entry.userId ?? null,
+      action: entry.action,
+      resource: entry.resource ?? null,
+      ip: entry.ip ?? null,
+      userAgent: entry.userAgent ?? null,
+      metaJson: entry.meta ? JSON.stringify(entry.meta) : null,
+      createdAt: Math.floor(Date.now() / 1000),
+    });
   } catch (e) {
     console.error("audit_log insert failed:", e, entry);
   }

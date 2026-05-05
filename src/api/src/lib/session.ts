@@ -1,13 +1,16 @@
 /**
- * session.ts — Session management (D1 + KV dual-layer)
+ * session.ts — Session management (Postgres + KV dual-layer)
  * - KV: Fast lookups, TTL 7 days (auth on every request)
- * - D1: Audit trail, revocation log, admin queries
- * - Pattern: createSession creates in both; getSession checks KV first, falls back to D1
- * - Revocation: immediate removal from KV + insert into revoked_at in D1
+ * - Postgres: Audit trail, revocation log, admin queries
+ * - Pattern: createSession creates in both; getSession checks KV first, falls back to Postgres
+ * - Revocation: immediate removal from KV + insert into revoked_at in Postgres
  */
 
 import type { Env } from "../index";
 import { randomToken } from "./crypto";
+import { getDb } from "../db/client";
+import { sessions, users } from "../db/schema";
+import { eq, and, isNull, gt, lt } from "drizzle-orm";
 
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 const COOKIE_NAME = "rj_session";
@@ -23,7 +26,7 @@ export interface SessionData {
 }
 
 /**
- * Create session in both KV (fast) and D1 (audit).
+ * Create session in both KV (fast) and Postgres (audit).
  * Returns session ID (hex-encoded random).
  */
 export async function createSession(
@@ -34,7 +37,6 @@ export async function createSession(
   ip: string,
   userAgent: string
 ): Promise<string> {
-  // Web Crypto API (nativo em Workers — NÃO usar require)
   const sessionIdHex = randomToken(32);
 
   const now = Math.floor(Date.now() / 1000);
@@ -54,24 +56,25 @@ export async function createSession(
   await env.SESSIONS.put(
     `session:${sessionIdHex}`,
     JSON.stringify(session),
-    {
-      expirationTtl: SESSION_TTL_SECONDS,
-    }
+    { expirationTtl: SESSION_TTL_SECONDS }
   );
 
-  // D1: insert into sessions table for audit
-  await env.DB.prepare(
-    `
-    INSERT INTO sessions (id, user_id, ip, user_agent, created_at, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-    `
-  ).bind(sessionIdHex, userId, ip, userAgent, now, expiresAt).run();
+  // Postgres: insert into sessions table for audit
+  const db = getDb(env);
+  await db.insert(sessions).values({
+    id: sessionIdHex,
+    userId,
+    ip,
+    userAgent,
+    createdAt: now,
+    expiresAt,
+  });
 
   return sessionIdHex;
 }
 
 /**
- * Get session from KV (fast path) or D1 (fallback).
+ * Get session from KV (fast path) or Postgres (fallback).
  * Returns null if not found or expired.
  */
 export async function getSession(
@@ -88,46 +91,55 @@ export async function getSession(
     }
   }
 
-  // Fallback: check D1 (in case KV expired but session row still valid)
-  const result = await env.DB.prepare(
-    `
-    SELECT id, user_id, ip, user_agent, created_at, expires_at
-    FROM sessions
-    WHERE id = ? AND revoked_at IS NULL AND expires_at > ?
-    LIMIT 1
-    `
-  )
-    .bind(sessionId, Math.floor(Date.now() / 1000))
-    .first();
+  // Fallback: check Postgres (in case KV expired but session row still valid)
+  const db = getDb(env);
+  const now = Math.floor(Date.now() / 1000);
 
-  if (!result) return null;
+  const [sessionRow] = await db
+    .select({
+      id: sessions.id,
+      userId: sessions.userId,
+      ip: sessions.ip,
+      userAgent: sessions.userAgent,
+      createdAt: sessions.createdAt,
+      expiresAt: sessions.expiresAt,
+    })
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.id, sessionId),
+        isNull(sessions.revokedAt),
+        gt(sessions.expiresAt, now)
+      )
+    )
+    .limit(1);
+
+  if (!sessionRow) return null;
 
   // Query user to populate email and tier
-  const user = await env.DB.prepare(
-    `SELECT email, tier FROM users WHERE id = ? LIMIT 1`
-  )
-    .bind(result.user_id as string)
-    .first();
+  const [userRow] = await db
+    .select({ email: users.email, tier: users.tier })
+    .from(users)
+    .where(eq(users.id, sessionRow.userId))
+    .limit(1);
 
-  if (!user) return null;
+  if (!userRow) return null;
 
   const session: SessionData = {
-    userId: result.user_id as string,
-    email: user.email as string,
-    tier: user.tier as string,
-    createdAt: result.created_at as number,
-    expiresAt: result.expires_at as number,
-    ip: result.ip as string,
-    userAgent: result.user_agent as string,
+    userId: sessionRow.userId,
+    email: userRow.email,
+    tier: userRow.tier,
+    createdAt: sessionRow.createdAt,
+    expiresAt: sessionRow.expiresAt,
+    ip: sessionRow.ip ?? "",
+    userAgent: sessionRow.userAgent ?? "",
   };
 
   // Repopulate KV for next request
   await env.SESSIONS.put(
     `session:${sessionId}`,
     JSON.stringify(session),
-    {
-      expirationTtl: SESSION_TTL_SECONDS,
-    }
+    { expirationTtl: SESSION_TTL_SECONDS }
   );
 
   return session;
@@ -135,7 +147,7 @@ export async function getSession(
 
 /**
  * Revoke session (logout, password change, admin action).
- * Removes from KV immediately + marks revoked_at in D1.
+ * Removes from KV immediately + marks revoked_at in Postgres.
  */
 export async function revokeSession(
   env: Env,
@@ -146,12 +158,12 @@ export async function revokeSession(
   // KV: immediate removal
   await env.SESSIONS.delete(`session:${sessionId}`);
 
-  // D1: mark revoked
-  await env.DB.prepare(
-    `UPDATE sessions SET revoked_at = ? WHERE id = ?`
-  )
-    .bind(now, sessionId)
-    .run();
+  // Postgres: mark revoked
+  const db = getDb(env);
+  await db
+    .update(sessions)
+    .set({ revokedAt: now })
+    .where(eq(sessions.id, sessionId));
 }
 
 /**
@@ -162,26 +174,24 @@ export async function revokeUserSessions(
   userId: string
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
+  const db = getDb(env);
 
-  // D1: get all active session IDs
-  const rows = await env.DB.prepare(
-    `SELECT id FROM sessions WHERE user_id = ? AND revoked_at IS NULL`
-  )
-    .bind(userId)
-    .all();
+  // Postgres: get all active session IDs
+  const activeSessions = await db
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
 
   // KV: delete each session
-  const promises = (rows.results || []).map((row: any) =>
-    env.SESSIONS.delete(`session:${row.id}`)
+  await Promise.all(
+    activeSessions.map((row) => env.SESSIONS.delete(`session:${row.id}`))
   );
-  await Promise.all(promises);
 
-  // D1: mark all revoked
-  await env.DB.prepare(
-    `UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`
-  )
-    .bind(now, userId)
-    .run();
+  // Postgres: mark all revoked
+  await db
+    .update(sessions)
+    .set({ revokedAt: now })
+    .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
 }
 
 /**
@@ -211,18 +221,17 @@ export async function rotateSession(
 }
 
 /**
- * Cleanup expired sessions from D1 (run via scheduled task, e.g., daily).
+ * Cleanup expired sessions from Postgres (run via scheduled task, e.g., daily).
  * KV TTL handles its own expiration automatically.
  */
 export async function cleanupExpiredSessions(env: Env): Promise<number> {
   const now = Math.floor(Date.now() / 1000);
-  const result = await env.DB.prepare(
-    `DELETE FROM sessions WHERE expires_at < ?`
-  )
-    .bind(now)
-    .run();
-
-  return result.meta.changes || 0;
+  const db = getDb(env);
+  const deleted = await db
+    .delete(sessions)
+    .where(lt(sessions.expiresAt, now))
+    .returning({ id: sessions.id });
+  return deleted.length;
 }
 
 /* ────────────────────────────────────────────────────────

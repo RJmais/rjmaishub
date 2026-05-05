@@ -6,6 +6,9 @@ import { requireAuth } from "../middleware/auth";
 import { logAudit } from "../lib/audit";
 import { randomToken } from "../lib/crypto";
 import { clientIp } from "../middleware/rateLimit";
+import { getDb } from "../db/client";
+import { userConsents } from "../db/schema";
+import { eq, and, isNotNull, desc } from "drizzle-orm";
 
 const CATEGORIES = [
   "privacy",
@@ -31,11 +34,11 @@ const upsertSchema = z.object({
 });
 
 interface ConsentRow {
-  category: string;
+  category: string | null;
   status: string;
-  granted_at: number;
-  revoked_at: number | null;
-  policy_version: string;
+  grantedAt: number;
+  revokedAt: number | null;
+  policyVersion: string;
 }
 
 export const consents = new Hono<{
@@ -47,19 +50,23 @@ export const consents = new Hono<{
   /** Estado atual por categoria — uma linha por categoria (mais recente). */
   .get("/", async (c) => {
     const userId = c.var.userId;
-    const rows = await c.env.DB.prepare(
-      `SELECT category, status, granted_at, revoked_at, policy_version
-         FROM user_consents
-        WHERE user_id = ? AND category IS NOT NULL
-        ORDER BY granted_at DESC`
-    )
-      .bind(userId)
-      .all<ConsentRow>();
+    const db = getDb(c.env);
+    const rows = await db
+      .select({
+        category: userConsents.category,
+        status: userConsents.status,
+        grantedAt: userConsents.grantedAt,
+        revokedAt: userConsents.revokedAt,
+        policyVersion: userConsents.policyVersion,
+      })
+      .from(userConsents)
+      .where(and(eq(userConsents.userId, userId), isNotNull(userConsents.category)))
+      .orderBy(desc(userConsents.grantedAt));
 
     const seen = new Set<string>();
     const items: ConsentRow[] = [];
-    for (const r of rows.results ?? []) {
-      if (!seen.has(r.category)) {
+    for (const r of rows) {
+      if (r.category && !seen.has(r.category)) {
         seen.add(r.category);
         items.push(r);
       }
@@ -76,24 +83,19 @@ export const consents = new Hono<{
     const now = Math.floor(Date.now() / 1000);
     const id = randomToken(16);
     const version = CURRENT_VERSIONS[body.category];
+    const db = getDb(c.env);
 
-    await c.env.DB.prepare(
-      `INSERT INTO user_consents
-        (id, user_id, policy_version, granted_at, ip, user_agent, category, status, revoked_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
-        id,
-        userId,
-        version,
-        now,
-        ip,
-        ua,
-        body.category,
-        body.status,
-        body.status === "revoked" ? now : null
-      )
-      .run();
+    await db.insert(userConsents).values({
+      id,
+      userId,
+      policyVersion: version,
+      grantedAt: now,
+      ip,
+      userAgent: ua,
+      category: body.category,
+      status: body.status,
+      revokedAt: body.status === "revoked" ? now : null,
+    });
 
     await logAudit(c.env, {
       userId,
@@ -110,14 +112,20 @@ export const consents = new Hono<{
   /** Histórico completo (auditoria do titular). */
   .get("/history", async (c) => {
     const userId = c.var.userId;
-    const rows = await c.env.DB.prepare(
-      `SELECT id, category, status, policy_version, granted_at, revoked_at, ip
-         FROM user_consents
-        WHERE user_id = ?
-        ORDER BY granted_at DESC
-        LIMIT 200`
-    )
-      .bind(userId)
-      .all();
-    return c.json({ history: rows.results ?? [] });
+    const db = getDb(c.env);
+    const rows = await db
+      .select({
+        id: userConsents.id,
+        category: userConsents.category,
+        status: userConsents.status,
+        policyVersion: userConsents.policyVersion,
+        grantedAt: userConsents.grantedAt,
+        revokedAt: userConsents.revokedAt,
+        ip: userConsents.ip,
+      })
+      .from(userConsents)
+      .where(eq(userConsents.userId, userId))
+      .orderBy(desc(userConsents.grantedAt))
+      .limit(200);
+    return c.json({ history: rows });
   });

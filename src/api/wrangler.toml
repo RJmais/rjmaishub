@@ -11,13 +11,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "development"
 APP_URL = "https://app.rjmais.com"
-
-# D1 database (clientes, sessões, chat history, audit log)
-[[d1_databases]]
-binding = "DB"
-database_name = "rjmaishub"
-database_id = "REPLACE_WITH_D1_ID"
-migrations_dir = "../../migrations"
+SUPABASE_URL = "https://gkfodtylflcpsqzshrbu.supabase.co"
 
 # KV — sessões cache, rate limit, feature flags
 [[kv_namespaces]]
@@ -40,8 +34,10 @@ enabled = true
 crons = ["0 6 * * *"]   # 06:00 UTC = 03:00 GMT-3 — sweep de retenção LGPD diário
 
 # Secrets (configurar via `wrangler secret put NAME`):
+# - DATABASE_URL            (Supabase transaction pooler connection string)
+# - SUPABASE_SERVICE_ROLE_KEY
+# - SUPABASE_ANON_KEY
 # - ANTHROPIC_API_KEY
-# - BETTER_AUTH_SECRET
 # - TURNSTILE_SECRET
 # - RESEND_API_KEY
 # - HUBSPOT_TOKEN

@@ -13,16 +13,18 @@ import { retentionSweep } from "./cron/retention";
 
 export interface Env {
   // Bindings (sempre presentes)
-  DB: D1Database;
   SESSIONS: KVNamespace;
   RATE_LIMIT: KVNamespace;
   FILES: R2Bucket;
   // Vars do wrangler.toml
   APP_URL: string;
   ENVIRONMENT: string;
-  // Secrets (podem estar ausentes em dev sem .dev.vars)
+  SUPABASE_URL: string;
+  // Secrets (configurar via `wrangler secret put NAME`)
+  DATABASE_URL: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+  SUPABASE_ANON_KEY?: string;
   ANTHROPIC_API_KEY: string;
-  BETTER_AUTH_SECRET: string;
   TURNSTILE_SECRET: string;
   RESEND_API_KEY?: string;
   HUBSPOT_TOKEN?: string;

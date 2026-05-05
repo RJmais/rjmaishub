@@ -28,6 +28,16 @@ import {
   generateBackupCodes,
   hashBackupCode,
 } from "../lib/totp";
+import { getDb } from "../db/client";
+import {
+  users,
+  userProfiles,
+  userConsents,
+  emailVerifyTokens,
+  passwordResetTokens,
+  totpBackupCodes,
+} from "../db/schema";
+import { eq, and, isNull } from "drizzle-orm";
 
 /* ─────────────── schemas ─────────────── */
 const signupSchema = z.object({
@@ -95,9 +105,12 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
       return c.json({ error: "verification_failed" }, 400);
     }
 
-    const existing = await c.env.DB.prepare("SELECT id FROM users WHERE email = ?")
-      .bind(body.email)
-      .first();
+    const db = getDb(c.env);
+    const [existing] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, body.email))
+      .limit(1);
     if (existing) {
       // Mensagem genérica anti-enumeração
       return c.json({ status: "ok", message: "Cadastro recebido. Verifique seu email." });
@@ -107,57 +120,85 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
     const passwordHash = await hashPassword(body.password);
     const now = ts();
 
-    await c.env.DB.batch([
-      c.env.DB.prepare(
-        `INSERT INTO users (id, email, email_verified, name, password_hash, tier, status, created_at, updated_at)
-         VALUES (?, ?, 0, ?, ?, 'cliente', 'active', ?, ?)`
-      ).bind(userId, body.email, body.name, passwordHash, now, now),
-      c.env.DB.prepare(
-        `INSERT INTO user_profiles (user_id, phone, language, timezone, marketing_opt_in, updated_at)
-         VALUES (?, ?, 'pt-BR', 'America/Sao_Paulo', ?, ?)`
-      ).bind(userId, body.phone ?? null, body.consents.marketing ? 1 : 0, now),
-      // 4 consentimentos
-      c.env.DB.prepare(
-        `INSERT INTO user_consents (id, user_id, policy_version, granted_at, ip, user_agent, category, status)
-         VALUES (?, ?, 'priv-2026-04', ?, ?, ?, 'privacy', 'granted')`
-      ).bind(randomToken(16), userId, now, ip, ua),
-      c.env.DB.prepare(
-        `INSERT INTO user_consents (id, user_id, policy_version, granted_at, ip, user_agent, category, status)
-         VALUES (?, ?, 'terms-2026-04', ?, ?, ?, 'terms', 'granted')`
-      ).bind(randomToken(16), userId, now, ip, ua),
-      c.env.DB.prepare(
-        `INSERT INTO user_consents (id, user_id, policy_version, granted_at, ip, user_agent, category, status)
-         VALUES (?, ?, 'ai-chat-2026-04', ?, ?, ?, 'ai_chat', ?)`
-      ).bind(
-        randomToken(16),
+    await db.transaction(async (tx) => {
+      await tx.insert(users).values({
+        id: userId,
+        email: body.email,
+        emailVerified: 0,
+        name: body.name,
+        passwordHash,
+        tier: "cliente",
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await tx.insert(userProfiles).values({
         userId,
-        now,
-        ip,
-        ua,
-        body.consents.aiChat ? "granted" : "revoked"
-      ),
-      c.env.DB.prepare(
-        `INSERT INTO user_consents (id, user_id, policy_version, granted_at, ip, user_agent, category, status)
-         VALUES (?, ?, 'marketing-2026-04', ?, ?, ?, 'marketing', ?)`
-      ).bind(
-        randomToken(16),
-        userId,
-        now,
-        ip,
-        ua,
-        body.consents.marketing ? "granted" : "revoked"
-      ),
-    ]);
+        phone: body.phone ?? null,
+        language: "pt-BR",
+        timezone: "America/Sao_Paulo",
+        marketingOptIn: body.consents.marketing ? 1 : 0,
+        updatedAt: now,
+      });
+      // 4 consentimentos em batch
+      await tx.insert(userConsents).values([
+        {
+          id: randomToken(16),
+          userId,
+          policyVersion: "priv-2026-04",
+          grantedAt: now,
+          ip,
+          userAgent: ua,
+          category: "privacy",
+          status: "granted",
+          revokedAt: null,
+        },
+        {
+          id: randomToken(16),
+          userId,
+          policyVersion: "terms-2026-04",
+          grantedAt: now,
+          ip,
+          userAgent: ua,
+          category: "terms",
+          status: "granted",
+          revokedAt: null,
+        },
+        {
+          id: randomToken(16),
+          userId,
+          policyVersion: "ai-chat-2026-04",
+          grantedAt: now,
+          ip,
+          userAgent: ua,
+          category: "ai_chat",
+          status: body.consents.aiChat ? "granted" : "revoked",
+          revokedAt: body.consents.aiChat ? null : now,
+        },
+        {
+          id: randomToken(16),
+          userId,
+          policyVersion: "marketing-2026-04",
+          grantedAt: now,
+          ip,
+          userAgent: ua,
+          category: "marketing",
+          status: body.consents.marketing ? "granted" : "revoked",
+          revokedAt: body.consents.marketing ? null : now,
+        },
+      ]);
+    });
 
     // Email verify token
     const verifyToken = randomToken(32);
     const verifyTokenHash = await hashToken(verifyToken);
-    await c.env.DB.prepare(
-      `INSERT INTO email_verify_tokens (id, user_id, token_hash, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?)`
-    )
-      .bind(randomToken(16), userId, verifyTokenHash, now + 24 * 3600, now)
-      .run();
+    await db.insert(emailVerifyTokens).values({
+      id: randomToken(16),
+      userId,
+      tokenHash: verifyTokenHash,
+      expiresAt: now + 24 * 3600,
+      createdAt: now,
+    });
 
     const verifyLink = `${c.env.APP_URL}/verificar-email/${verifyToken}`;
     await sendEmail(c.env.RESEND_API_KEY, {
@@ -182,26 +223,33 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
     const token = c.req.param("token");
     if (!token) return c.json({ error: "invalid_token" }, 400);
     const tokenHash = await hashToken(token);
-    const row = await c.env.DB.prepare(
-      `SELECT user_id, expires_at, used_at FROM email_verify_tokens WHERE token_hash = ?`
-    )
-      .bind(tokenHash)
-      .first<{ user_id: string; expires_at: number; used_at: number | null }>();
-    if (!row || row.used_at || row.expires_at < ts()) {
+    const db = getDb(c.env);
+
+    const [row] = await db
+      .select({
+        userId: emailVerifyTokens.userId,
+        expiresAt: emailVerifyTokens.expiresAt,
+        usedAt: emailVerifyTokens.usedAt,
+      })
+      .from(emailVerifyTokens)
+      .where(eq(emailVerifyTokens.tokenHash, tokenHash))
+      .limit(1);
+
+    if (!row || row.usedAt || row.expiresAt < ts()) {
       return c.json({ error: "invalid_token" }, 400);
     }
     const now = ts();
-    await c.env.DB.batch([
-      c.env.DB.prepare(`UPDATE users SET email_verified = 1, updated_at = ? WHERE id = ?`).bind(
-        now,
-        row.user_id
-      ),
-      c.env.DB.prepare(`UPDATE email_verify_tokens SET used_at = ? WHERE token_hash = ?`).bind(
-        now,
-        tokenHash
-      ),
-    ]);
-    await logAudit(c.env, { userId: row.user_id, action: "auth.email_verified" });
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ emailVerified: 1, updatedAt: now })
+        .where(eq(users.id, row.userId));
+      await tx
+        .update(emailVerifyTokens)
+        .set({ usedAt: now })
+        .where(eq(emailVerifyTokens.tokenHash, tokenHash));
+    });
+    await logAudit(c.env, { userId: row.userId, action: "auth.email_verified" });
     return c.json({ status: "ok" });
   })
 
@@ -221,27 +269,27 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
     );
     if (!turnstileOk) return c.json({ error: "verification_failed" }, 400);
 
-    const user = await c.env.DB.prepare(
-      `SELECT id, email, name, password_hash, totp_secret, status, tier
-         FROM users WHERE email = ? LIMIT 1`
-    )
-      .bind(body.email)
-      .first<{
-        id: string;
-        email: string;
-        name: string;
-        password_hash: string | null;
-        totp_secret: string | null;
-        status: string;
-        tier: string;
-      }>();
+    const db = getDb(c.env);
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        passwordHash: users.passwordHash,
+        totpSecret: users.totpSecret,
+        status: users.status,
+        tier: users.tier,
+      })
+      .from(users)
+      .where(eq(users.email, body.email))
+      .limit(1);
 
     // Mensagem genérica anti-enumeração + anti-timing (sempre roda hash)
     const dummy =
       "100000$0000000000000000000000000000000000000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000";
     const valid =
-      user && user.password_hash
-        ? await verifyPassword(body.password, user.password_hash)
+      user && user.passwordHash
+        ? await verifyPassword(body.password, user.passwordHash)
         : await verifyPassword(body.password, dummy).then(() => false);
 
     if (!user || !valid || user.status !== "active") {
@@ -256,7 +304,7 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
 
     // 2FA? Bind do tempToken ao IP original — se o IP mudar até o /login/2fa,
     // rejeitamos (anti-MITM, anti-cookie-relay).
-    if (user.totp_secret) {
+    if (user.totpSecret) {
       const tempToken = randomToken(32);
       await c.env.SESSIONS.put(
         `2fa:${tempToken}`,
@@ -309,28 +357,42 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
       return c.json({ error: "invalid_token" }, 401);
     }
 
-    const user = await c.env.DB.prepare(
-      `SELECT id, email, name, totp_secret, tier FROM users WHERE id = ? LIMIT 1`
-    )
-      .bind(parsed.userId)
-      .first<{ id: string; email: string; name: string; totp_secret: string; tier: string }>();
-    if (!user || !user.totp_secret) return c.json({ error: "invalid_token" }, 401);
+    const db = getDb(c.env);
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        totpSecret: users.totpSecret,
+        tier: users.tier,
+      })
+      .from(users)
+      .where(eq(users.id, parsed.userId))
+      .limit(1);
+    if (!user || !user.totpSecret) return c.json({ error: "invalid_token" }, 401);
 
     let valid = false;
     if (/^\d{6}$/.test(body.code)) {
-      valid = await verifyTotpCode(user.totp_secret, body.code);
+      valid = await verifyTotpCode(user.totpSecret, body.code);
     } else {
       // backup code
       const codeHash = await hashBackupCode(body.code);
-      const backup = await c.env.DB.prepare(
-        `SELECT id FROM totp_backup_codes WHERE user_id = ? AND code_hash = ? AND used_at IS NULL LIMIT 1`
-      )
-        .bind(user.id, codeHash)
-        .first<{ id: string }>();
+      const [backup] = await db
+        .select({ id: totpBackupCodes.id })
+        .from(totpBackupCodes)
+        .where(
+          and(
+            eq(totpBackupCodes.userId, user.id),
+            eq(totpBackupCodes.codeHash, codeHash),
+            isNull(totpBackupCodes.usedAt)
+          )
+        )
+        .limit(1);
       if (backup) {
-        await c.env.DB.prepare(`UPDATE totp_backup_codes SET used_at = ? WHERE id = ?`)
-          .bind(ts(), backup.id)
-          .run();
+        await db
+          .update(totpBackupCodes)
+          .set({ usedAt: ts() })
+          .where(eq(totpBackupCodes.id, backup.id));
         valid = true;
       }
     }
@@ -398,23 +460,25 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
     );
     if (!turnstileOk) return c.json({ error: "verification_failed" }, 400);
 
-    const user = await c.env.DB.prepare(
-      `SELECT id, name, email FROM users WHERE email = ? AND status = 'active' LIMIT 1`
-    )
-      .bind(body.email)
-      .first<{ id: string; name: string; email: string }>();
+    const db = getDb(c.env);
+    const [user] = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(and(eq(users.email, body.email), eq(users.status, "active")))
+      .limit(1);
 
     // sempre 200 (anti-enumeration)
     if (user) {
       const token = randomToken(32);
       const tokenHash = await hashToken(token);
       const now = ts();
-      await c.env.DB.prepare(
-        `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at)
-         VALUES (?, ?, ?, ?, ?)`
-      )
-        .bind(randomToken(16), user.id, tokenHash, now + 3600, now)
-        .run();
+      await db.insert(passwordResetTokens).values({
+        id: randomToken(16),
+        userId: user.id,
+        tokenHash,
+        expiresAt: now + 3600,
+        createdAt: now,
+      });
       await sendEmail(c.env.RESEND_API_KEY, {
         to: user.email,
         subject: "Redefinir sua senha — RJ+ Hub",
@@ -429,29 +493,36 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
   .post("/reset-password", zValidator("json", resetSchema), async (c) => {
     const body = c.req.valid("json");
     const tokenHash = await hashToken(body.token);
-    const row = await c.env.DB.prepare(
-      `SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token_hash = ?`
-    )
-      .bind(tokenHash)
-      .first<{ id: string; user_id: string; expires_at: number; used_at: number | null }>();
-    if (!row || row.used_at || row.expires_at < ts()) {
+    const db = getDb(c.env);
+
+    const [row] = await db
+      .select({
+        id: passwordResetTokens.id,
+        userId: passwordResetTokens.userId,
+        expiresAt: passwordResetTokens.expiresAt,
+        usedAt: passwordResetTokens.usedAt,
+      })
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.tokenHash, tokenHash))
+      .limit(1);
+
+    if (!row || row.usedAt || row.expiresAt < ts()) {
       return c.json({ error: "invalid_token" }, 400);
     }
     const newHash = await hashPassword(body.password);
     const now = ts();
-    await c.env.DB.batch([
-      c.env.DB.prepare(`UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`).bind(
-        newHash,
-        now,
-        row.user_id
-      ),
-      c.env.DB.prepare(`UPDATE password_reset_tokens SET used_at = ? WHERE id = ?`).bind(
-        now,
-        row.id
-      ),
-    ]);
-    await revokeUserSessions(c.env, row.user_id);
-    await logAudit(c.env, { userId: row.user_id, action: "auth.password_reset.success" });
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ passwordHash: newHash, updatedAt: now })
+        .where(eq(users.id, row.userId));
+      await tx
+        .update(passwordResetTokens)
+        .set({ usedAt: now })
+        .where(eq(passwordResetTokens.id, row.id));
+    });
+    await revokeUserSessions(c.env, row.userId);
+    await logAudit(c.env, { userId: row.userId, action: "auth.password_reset.success" });
     return c.json({ status: "ok" });
   })
 
@@ -475,22 +546,25 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
     if (!ok) return c.json({ error: "invalid_code" }, 401);
 
     const now = ts();
-    await c.env.DB.prepare(`UPDATE users SET totp_secret = ?, updated_at = ? WHERE id = ?`)
-      .bind(secret, now, user.id)
-      .run();
+    const db = getDb(c.env);
+    await db
+      .update(users)
+      .set({ totpSecret: secret, updatedAt: now })
+      .where(eq(users.id, user.id));
     await c.env.SESSIONS.delete(`2fa-pending:${user.id}`);
 
-    // Gera 10 backup codes
+    // Gera 10 backup codes — bulk insert único
     const codes = generateBackupCodes();
-    const inserts = codes.map((code) =>
-      hashBackupCode(code).then((hash) =>
-        c.env.DB.prepare(
-          `INSERT INTO totp_backup_codes (id, user_id, code_hash, created_at) VALUES (?, ?, ?, ?)`
-        ).bind(randomToken(16), user.id, hash, now)
-      )
+    const codeValues = await Promise.all(
+      codes.map(async (code) => ({
+        id: randomToken(16),
+        userId: user.id,
+        codeHash: await hashBackupCode(code),
+        createdAt: now,
+      }))
     );
-    const stmts = await Promise.all(inserts);
-    await c.env.DB.batch(stmts);
+    await db.insert(totpBackupCodes).values(codeValues);
+
     await logAudit(c.env, { userId: user.id, action: "auth.2fa.enabled" });
     return c.json({ status: "ok", backupCodes: codes });
   })
@@ -499,24 +573,28 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: st
   .post("/2fa/disable", requireAuth, zValidator("json", disable2faSchema), async (c) => {
     const user = c.var.user;
     const body = c.req.valid("json");
-    const u = await c.env.DB.prepare(
-      `SELECT password_hash, totp_secret FROM users WHERE id = ?`
-    )
-      .bind(user.id)
-      .first<{ password_hash: string; totp_secret: string }>();
-    if (!u || !u.totp_secret) return c.json({ error: "no_2fa" }, 400);
+    const db = getDb(c.env);
 
-    const passOk = await verifyPassword(body.password, u.password_hash);
-    const codeOk = await verifyTotpCode(u.totp_secret, body.code);
+    const [u] = await db
+      .select({ passwordHash: users.passwordHash, totpSecret: users.totpSecret })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+    if (!u || !u.totpSecret) return c.json({ error: "no_2fa" }, 400);
+
+    const passOk = await verifyPassword(body.password, u.passwordHash ?? "");
+    const codeOk = await verifyTotpCode(u.totpSecret, body.code);
     if (!passOk || !codeOk) return c.json({ error: "invalid" }, 401);
 
-    await c.env.DB.batch([
-      c.env.DB.prepare(`UPDATE users SET totp_secret = NULL, updated_at = ? WHERE id = ?`).bind(
-        ts(),
-        user.id
-      ),
-      c.env.DB.prepare(`DELETE FROM totp_backup_codes WHERE user_id = ?`).bind(user.id),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ totpSecret: null, updatedAt: ts() })
+        .where(eq(users.id, user.id));
+      await tx
+        .delete(totpBackupCodes)
+        .where(eq(totpBackupCodes.userId, user.id));
+    });
     await logAudit(c.env, { userId: user.id, action: "auth.2fa.disabled" });
     return c.json({ status: "ok" });
   });

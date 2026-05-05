@@ -6,6 +6,9 @@ import { requireAuth } from "../middleware/auth";
 import { randomToken } from "../lib/crypto";
 import { logAudit } from "../lib/audit";
 import { sendEmail } from "../lib/email";
+import { getDb } from "../db/client";
+import { referrals as referralsTable } from "../db/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 const createSchema = z.object({
   inviteeEmail: z.string().email().toLowerCase(),
@@ -23,22 +26,31 @@ export const referrals = new Hono<{
   .post("/", zValidator("json", createSchema), async (c) => {
     const user = c.var.user;
     const body = c.req.valid("json");
+    const db = getDb(c.env);
 
-    const dup = await c.env.DB.prepare(
-      `SELECT id FROM referrals WHERE referrer_id = ? AND invitee_email = ? AND status = 'pending'`
-    )
-      .bind(user.id, body.inviteeEmail)
-      .first();
+    const [dup] = await db
+      .select({ id: referralsTable.id })
+      .from(referralsTable)
+      .where(
+        and(
+          eq(referralsTable.referrerId, user.id),
+          eq(referralsTable.inviteeEmail, body.inviteeEmail),
+          eq(referralsTable.status, "pending")
+        )
+      )
+      .limit(1);
     if (dup) return c.json({ error: "already_invited" }, 409);
 
     const id = randomToken(16);
     const now = ts();
-    await c.env.DB.prepare(
-      `INSERT INTO referrals (id, referrer_id, invitee_email, status, reward_status, created_at)
-       VALUES (?, ?, ?, 'pending', 'none', ?)`
-    )
-      .bind(id, user.id, body.inviteeEmail, now)
-      .run();
+    await db.insert(referralsTable).values({
+      id,
+      referrerId: user.id,
+      inviteeEmail: body.inviteeEmail,
+      status: "pending",
+      rewardStatus: "none",
+      createdAt: now,
+    });
 
     const link = `${c.env.APP_URL}/?ref=${id}`;
     await sendEmail(c.env.RESEND_API_KEY, {
@@ -62,11 +74,19 @@ export const referrals = new Hono<{
 
   .get("/", async (c) => {
     const user = c.var.user;
-    const rows = await c.env.DB.prepare(
-      `SELECT id, invitee_email, status, reward_status, created_at, converted_at
-         FROM referrals WHERE referrer_id = ? ORDER BY created_at DESC LIMIT 100`
-    )
-      .bind(user.id)
-      .all();
-    return c.json({ items: rows.results ?? [] });
+    const db = getDb(c.env);
+    const rows = await db
+      .select({
+        id: referralsTable.id,
+        inviteeEmail: referralsTable.inviteeEmail,
+        status: referralsTable.status,
+        rewardStatus: referralsTable.rewardStatus,
+        createdAt: referralsTable.createdAt,
+        convertedAt: referralsTable.convertedAt,
+      })
+      .from(referralsTable)
+      .where(eq(referralsTable.referrerId, user.id))
+      .orderBy(desc(referralsTable.createdAt))
+      .limit(100);
+    return c.json({ items: rows });
   });

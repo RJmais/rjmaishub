@@ -5,8 +5,8 @@ import type { Env } from "../index";
  * Rate limit por chave (ex: IP, userId, IP+rota).
  * Backed por KV (RATE_LIMIT). Janela deslizante via TTL nativo.
  */
-export async function rateLimit(
-  c: Context<{ Bindings: Env }>,
+export async function rateLimit<E extends { Bindings: Env }>(
+  c: Context<E>,
   key: string,
   limit: number,
   windowSeconds: number
