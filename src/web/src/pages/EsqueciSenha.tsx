@@ -4,7 +4,7 @@ import { Turnstile } from "react-turnstile";
 import { apiFetch } from "../lib/api";
 
 const SITE_KEY =
-  (import.meta as any).env.VITE_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
+  import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
 
 export default function EsqueciSenha() {
   const [email, setEmail] = useState("");

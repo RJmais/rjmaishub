@@ -5,13 +5,11 @@ import { apiFetch } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
 const SITE_KEY =
-  (import.meta as any).env.VITE_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
+  import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
 
 export default function Login() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const setUser = useAuth((s) => s.setUser);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");

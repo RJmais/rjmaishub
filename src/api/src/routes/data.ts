@@ -3,6 +3,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import type { Env } from "../index";
 import { requireAuth } from "../middleware/auth";
+import type { AuthUser } from "../middleware/auth";
 import { logAudit } from "../lib/audit";
 import { clientIp } from "../middleware/rateLimit";
 import { revokeUserSessions } from "../lib/session";
@@ -28,7 +29,7 @@ const ts = () => Math.floor(Date.now() / 1000);
 
 export const data = new Hono<{
   Bindings: Env;
-  Variables: { user: any; userId: string };
+  Variables: { user: AuthUser; userId: string };
 }>()
   .use("*", requireAuth)
 

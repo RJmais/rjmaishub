@@ -1,13 +1,12 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Turnstile } from "react-turnstile";
 import { apiFetch } from "../lib/api";
 
 const SITE_KEY =
-  (import.meta as any).env.VITE_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
+  import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
 
 export default function Signup() {
-  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -50,8 +49,8 @@ export default function Signup() {
         }),
       });
       setDone(true);
-    } catch (err: any) {
-      setError(err?.message ?? "Não foi possível criar sua conta agora.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível criar sua conta agora.");
     } finally {
       setLoading(false);
     }

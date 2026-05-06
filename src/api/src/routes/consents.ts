@@ -3,6 +3,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import type { Env } from "../index";
 import { requireAuth } from "../middleware/auth";
+import type { AuthUser } from "../middleware/auth";
 import { logAudit } from "../lib/audit";
 import { randomToken } from "../lib/crypto";
 import { clientIp } from "../middleware/rateLimit";
@@ -43,7 +44,7 @@ interface ConsentRow {
 
 export const consents = new Hono<{
   Bindings: Env;
-  Variables: { user: any; userId: string };
+  Variables: { user: AuthUser; userId: string };
 }>()
   .use("*", requireAuth)
 

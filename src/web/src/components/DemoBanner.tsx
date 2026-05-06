@@ -3,7 +3,7 @@
  * Avisa que backend não está conectado — login/chat não funcionam ainda.
  */
 const isDemo =
-  String((import.meta as any).env?.VITE_DEMO_MODE ?? "").toLowerCase() === "true";
+  String(import.meta.env?.VITE_DEMO_MODE ?? "").toLowerCase() === "true";
 
 export default function DemoBanner() {
   if (!isDemo) return null;

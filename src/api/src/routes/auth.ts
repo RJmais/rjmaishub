@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import type { Env } from "../index";
 import { rateLimit, clientIp } from "../middleware/rateLimit";
 import { requireAuth } from "../middleware/auth";
+import type { AuthUser } from "../middleware/auth";
 import {
   hashPassword,
   verifyPassword,
@@ -84,7 +85,7 @@ const disable2faSchema = z.object({
 
 const ts = () => Math.floor(Date.now() / 1000);
 
-export const auth = new Hono<{ Bindings: Env; Variables: { user: any; userId: string } }>()
+export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userId: string } }>()
 
   /* ─────── POST /signup ─────── */
   .post("/signup", zValidator("json", signupSchema), async (c) => {

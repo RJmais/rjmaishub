@@ -3,6 +3,8 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import type { Env } from "../index";
 import { requireAuth } from "../middleware/auth";
+import type { AuthUser } from "../middleware/auth";
+import type { Context } from "hono";
 import { rateLimit, clientIp } from "../middleware/rateLimit";
 import { logAudit } from "../lib/audit";
 import { randomToken } from "../lib/crypto";
@@ -41,7 +43,7 @@ const ASSISTANTS = {
 type AssistantId = keyof typeof ASSISTANTS;
 
 async function streamAssistant(
-  c: any,
+  c: Context<{ Bindings: Env; Variables: { user: AuthUser; userId: string } }>,
   assistantId: AssistantId,
   body: z.infer<typeof chatSchema>,
   userId: string,
@@ -155,7 +157,7 @@ async function streamAssistant(
             ) {
               fullText += json.delta.text;
             }
-          } catch (e) {
+          } catch {
             // Ignorar parse errors de chunks incompletos
           }
         }
@@ -175,7 +177,7 @@ async function streamAssistant(
 
 export const chat = new Hono<{
   Bindings: Env;
-  Variables: { user: any; userId: string };
+  Variables: { user: AuthUser; userId: string };
 }>()
   .use("*", requireAuth)
   .post("/sofia", zValidator("json", chatSchema), (c) =>
