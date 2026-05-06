@@ -17,4 +17,3 @@ coverage
 .npm-cache*/
 .npm-tmp/
 *.skill
-package-lock.json
