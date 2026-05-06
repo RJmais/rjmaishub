@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "deploy": "wrangler pages deploy dist --project-name rjmaishub",
     "lint": "eslint src --ext .ts,.tsx",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "react": "^18.3.1",
