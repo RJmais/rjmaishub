@@ -10,6 +10,7 @@ import { dpo } from "./routes/dpo";
 import { referrals } from "./routes/referrals";
 import { events } from "./routes/events";
 import { webhooks } from "./routes/webhooks";
+import { leads } from "./routes/leads";
 import { retentionSweep } from "./cron/retention";
 
 export interface Env {
@@ -43,6 +44,7 @@ app.use(
         c.env.APP_URL,
         "http://localhost:5173",
         "https://ana-rjmais.pages.dev",
+        "https://chat.rjpeoplecare.com",
       ];
       return origin && allowed.includes(origin) ? origin : allowed[0];
     },
@@ -59,6 +61,7 @@ app.route("/auth", auth);
 app.route("/webhooks", webhooks);
 
 // Protegidas (requireAuth aplicado dentro de cada router)
+app.route("/leads", leads);
 app.route("/chat", chat);
 app.route("/consents", consents);
 app.route("/data", data);
