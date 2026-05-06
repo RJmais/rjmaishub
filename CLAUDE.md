@@ -9,7 +9,7 @@
 - **Runtime:** Cloudflare Workers (framework: Hono)
 - **ORM:** Drizzle ORM
 - **Banco de dados:** Supabase Postgres
-- **Deploy:** Wrangler → GitHub Push → Railway (auto-deploy)
+- **Deploy:** GitHub push → GitHub Actions → Cloudflare Pages (web) + Workers (API). Também: `wrangler deploy` direto.
 - **Linguagem:** TypeScript (strict mode, monorepo)
 - **Repositório:** https://github.com/pilarmoret/rjmais-internal-tools
 - **Account Cloudflare:** c88d8f1a5a7013b48d74322eb2b5794f
@@ -39,7 +39,7 @@ npm run dev            # Desenvolvimento local (wrangler dev)
 npm run build          # Build de produção
 npm run db:push        # Push do schema Drizzle para Supabase
 npm run db:studio      # Interface visual do banco
-git push origin master # Deploy automático via Railway
+git push origin main   # Deploy automático via GitHub Actions (Cloudflare)
 wrangler deploy        # Deploy direto no Cloudflare
 ```
 
@@ -54,7 +54,7 @@ wrangler deploy        # Deploy direto no Cloudflare
    - `fix:` correção de bug
    - `chore:` manutenção, config
    - `refactor:` refatoração sem mudança de comportamento
-4. **Verificar build local** antes de fazer push para evitar falha no Railway
+4. **Verificar build local** antes de fazer push para evitar falha no CI (GitHub Actions / Cloudflare)
 5. **Nunca expor** variáveis de ambiente no código
 6. **Sempre usar** `import` ES modules — nunca `require()`
 
@@ -62,7 +62,7 @@ wrangler deploy        # Deploy direto no Cloudflare
 
 ## ⚠️ Problemas Conhecidos e Soluções
 
-### Erro "@/* module not found on Railway"
+### Erro "@/* module not found" no build
 - **Causa:** `baseUrl` ausente ou incorreto no tsconfig.json
 - **Fix aplicado:** `"baseUrl": "."` e `"paths": {"@/*": ["src/*"]}` no tsconfig
 - **Status:** ✅ Resolvido em 05/05/2026
@@ -76,7 +76,6 @@ wrangler deploy        # Deploy direto no Cloudflare
 
 ## 🔗 Links de Referência
 
-- Railway Dashboard: https://railway.app/dashboard
 - Cloudflare Dashboard: https://dash.cloudflare.com
 - Supabase Dashboard: https://app.supabase.com
 - GitHub Repo: https://github.com/pilarmoret/rjmais-internal-tools

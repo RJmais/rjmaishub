@@ -9,6 +9,7 @@ import { data } from "./routes/data";
 import { dpo } from "./routes/dpo";
 import { referrals } from "./routes/referrals";
 import { events } from "./routes/events";
+import { webhooks } from "./routes/webhooks";
 import { retentionSweep } from "./cron/retention";
 
 export interface Env {
@@ -38,7 +39,11 @@ app.use(
   "*",
   cors({
     origin: (origin, c) => {
-      const allowed = [c.env.APP_URL, "http://localhost:5173"];
+      const allowed = [
+        c.env.APP_URL,
+        "http://localhost:5173",
+        "https://ana-rjmais.pages.dev",
+      ];
       return origin && allowed.includes(origin) ? origin : allowed[0];
     },
     credentials: true,
@@ -51,6 +56,7 @@ app.use(
 // Públicas
 app.route("/health", health);
 app.route("/auth", auth);
+app.route("/webhooks", webhooks);
 
 // Protegidas (requireAuth aplicado dentro de cada router)
 app.route("/chat", chat);

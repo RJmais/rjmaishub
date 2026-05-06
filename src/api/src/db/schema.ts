@@ -121,3 +121,19 @@ export const eventsRsvp = pgTable('events_rsvp', {
 }, (table) => ({
   userEventUniq: unique('events_rsvp_user_event_unique').on(table.userId, table.eventSlug),
 }));
+
+export const leads = pgTable('leads', {
+  id:              text('id').primaryKey(),
+  email:           text('email').notNull().unique(),
+  name:            text('name'),
+  phone:           text('phone'),
+  source:          text('source').notNull().default('ana-chatbot'),
+  utmSource:       text('utm_source'),
+  utmCampaign:     text('utm_campaign'),
+  utmMedium:       text('utm_medium'),
+  message:         text('message'),
+  status:          text('status').notNull().default('new'),
+  hubspotSyncedAt: bigint('hubspot_synced_at', { mode: 'number' }),
+  createdAt:       bigint('created_at',        { mode: 'number' }).notNull(),
+  updatedAt:       bigint('updated_at',        { mode: 'number' }).notNull(),
+});

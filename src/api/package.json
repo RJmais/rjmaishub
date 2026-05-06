@@ -13,19 +13,20 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "hono": "^4.6.0",
-    "zod": "^3.23.8",
     "@hono/zod-validator": "^0.2.2",
-    "otpauth": "^9.3.2",
-    "qrcode": "^1.5.4",
-    "jszip": "^3.10.1",
     "drizzle-orm": "^0.36.0",
-    "postgres": "^3.4.4"
+    "hono": "^4.6.0",
+    "jszip": "^3.10.1",
+    "otpauth": "^9.3.2",
+    "postgres": "^3.4.4",
+    "qrcode": "^1.5.4",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240924.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "drizzle-kit": "^0.28.0",
     "eslint": "^9.7.0",
     "typescript": "^5.5.4",

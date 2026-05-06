@@ -14,3 +14,7 @@ build
 coverage
 .nyc_output
 .turbo
+.npm-cache*/
+.npm-tmp/
+*.skill
+package-lock.json
