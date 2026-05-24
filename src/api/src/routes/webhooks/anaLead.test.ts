@@ -62,9 +62,14 @@ import { logAudit } from "../../lib/audit";
 // ---------------------------------------------------------------------------
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
+  const rateLimitKv = {
+    get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue(undefined),
+  } as unknown as KVNamespace;
+
   return {
     SESSIONS: {} as KVNamespace,
-    RATE_LIMIT: {} as KVNamespace,
+    RATE_LIMIT: rateLimitKv,
     FILES: {} as R2Bucket,
     APP_URL: "https://app.rjmais.com.br",
     ENVIRONMENT: "test",
@@ -141,21 +146,20 @@ describe("POST /webhooks/ana-lead", () => {
   // -------------------------------------------------------------------------
   // Happy path — new lead (minimal payload)
   // -------------------------------------------------------------------------
-  it("should return 201 with status captured and a hex id when lead is new", async () => {
+  it("should return 202 with a generic received status when lead is new", async () => {
     const app = buildApp();
     const res = await post(app, { email: "new@lead.com" });
 
-    expect(res.status).toBe(201);
-    const json = await res.json<{ status: string; id: string }>();
-    expect(json.status).toBe("captured");
-    // randomToken(16) → 16 bytes × 2 hex chars = 32 chars
-    expect(json.id).toMatch(/^[0-9a-f]{32}$/);
+    expect(res.status).toBe(202);
+    const json = await res.json<{ status: string; id?: string }>();
+    expect(json.status).toBe("received");
+    expect(json.id).toBeUndefined();
   });
 
   // -------------------------------------------------------------------------
   // Happy path — full payload
   // -------------------------------------------------------------------------
-  it("should return 201 and accept all optional fields in a full payload", async () => {
+  it("should return 202 and accept all optional fields in a full payload", async () => {
     const app = buildApp();
     const res = await post(app, {
       email: "full@lead.com",
@@ -167,30 +171,30 @@ describe("POST /webhooks/ana-lead", () => {
       utmMedium: "stories",
     });
 
-    expect(res.status).toBe(201);
-    const json = await res.json<{ status: string; id: string }>();
-    expect(json.status).toBe("captured");
-    expect(json.id).toMatch(/^[0-9a-f]{32}$/);
+    expect(res.status).toBe(202);
+    const json = await res.json<{ status: string; id?: string }>();
+    expect(json.status).toBe("received");
+    expect(json.id).toBeUndefined();
   });
 
   // -------------------------------------------------------------------------
   // Duplicate — email already in DB
   // -------------------------------------------------------------------------
-  it("should return 200 with status duplicate and the existing id when email is already in DB", async () => {
+  it("should return the same generic response when email is already in DB", async () => {
     mockDbState.existing = { id: "existing-aabbcc112233" };
     const app = buildApp();
     const res = await post(app, { email: "dup@lead.com" });
 
-    expect(res.status).toBe(200);
-    const json = await res.json<{ status: string; id: string }>();
-    expect(json.status).toBe("duplicate");
-    expect(json.id).toBe("existing-aabbcc112233");
+    expect(res.status).toBe(202);
+    const json = await res.json<{ status: string; id?: string }>();
+    expect(json.status).toBe("received");
+    expect(json.id).toBeUndefined();
   });
 
   // -------------------------------------------------------------------------
   // Race condition — insert throws Postgres 23505
   // -------------------------------------------------------------------------
-  it("should return 200 with status duplicate when insert throws a Postgres 23505 error", async () => {
+  it("should return the same generic response when insert throws a Postgres 23505 error", async () => {
     mockDbState.insertError = Object.assign(
       new Error('duplicate key value violates unique constraint "leads_email_key"'),
       { code: "23505" }
@@ -198,9 +202,9 @@ describe("POST /webhooks/ana-lead", () => {
     const app = buildApp();
     const res = await post(app, { email: "race@lead.com" });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const json = await res.json<{ status: string }>();
-    expect(json.status).toBe("duplicate");
+    expect(json.status).toBe("received");
   });
 
   // -------------------------------------------------------------------------
@@ -240,9 +244,9 @@ describe("POST /webhooks/ana-lead", () => {
     const app = buildApp();
     const res = await post(app, { email: "UPPER@LEAD.COM" });
 
-    expect(res.status).toBe(201);
-    const json = await res.json<{ status: string; id: string }>();
-    expect(json.status).toBe("captured");
+    expect(res.status).toBe(202);
+    const json = await res.json<{ status: string }>();
+    expect(json.status).toBe("received");
   });
 
   // -------------------------------------------------------------------------
@@ -333,5 +337,19 @@ describe("POST /webhooks/ana-lead", () => {
 
     const res = await post(app, { email: "crash@lead.com" });
     expect(res.status).toBe(500);
+  });
+
+  it("should return 429 when rate limited", async () => {
+    const env = makeEnv({
+      RATE_LIMIT: {
+        get: vi.fn().mockResolvedValue("10"),
+        put: vi.fn().mockResolvedValue(undefined),
+      } as unknown as KVNamespace,
+    });
+    const res = await post(buildApp(), { email: "limited@lead.com" }, env);
+
+    expect(res.status).toBe(429);
+    const json = await res.json<{ error: string }>();
+    expect(json.error).toBe("rate_limited");
   });
 });

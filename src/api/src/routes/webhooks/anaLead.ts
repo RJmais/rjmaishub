@@ -5,9 +5,13 @@ import type { Env } from "../../index";
 import { randomToken } from "../../lib/crypto";
 import { logAudit } from "../../lib/audit";
 import { pushLeadToHubSpot } from "../../lib/hubspot";
+import { clientIp, rateLimit } from "../../middleware/rateLimit";
 import { getDb } from "../../db/client";
 import { leads as leadsTable } from "../../db/schema";
 import { eq } from "drizzle-orm";
+
+const SOURCE = "ana-chatbot";
+const RECEIVED_RESPONSE = { status: "received" } as const;
 
 const anaLeadSchema = z.object({
   email:       z.string().email().toLowerCase().trim(),
@@ -24,6 +28,11 @@ const ts = () => Math.floor(Date.now() / 1000);
 export const anaLead = new Hono<{ Bindings: Env }>()
   .post("/", zValidator("json", anaLeadSchema), async (c) => {
     const body = c.req.valid("json");
+    const ip = clientIp(c);
+    const ua = c.req.header("User-Agent");
+    const allowed = await rateLimit(c, `webhook:ana-lead:${ip}`, 10, 60);
+    if (!allowed) return c.json({ error: "rate_limited" }, 429);
+
     const db   = getDb(c.env);
     const now  = ts();
 
@@ -33,9 +42,7 @@ export const anaLead = new Hono<{ Bindings: Env }>()
       .where(eq(leadsTable.email, body.email))
       .limit(1);
 
-    if (existing) {
-      return c.json({ status: "duplicate", id: existing.id }, 200);
-    }
+    if (existing) return c.json(RECEIVED_RESPONSE, 202);
 
     const id = randomToken(16);
     try {
@@ -45,7 +52,7 @@ export const anaLead = new Hono<{ Bindings: Env }>()
         name:        body.name        ?? null,
         phone:       body.phone       ?? null,
         message:     body.message     ?? null,
-        source:      "ana-chatbot",
+        source:      SOURCE,
         utmSource:   body.utmSource   ?? null,
         utmCampaign: body.utmCampaign ?? null,
         utmMedium:   body.utmMedium   ?? null,
@@ -59,7 +66,7 @@ export const anaLead = new Hono<{ Bindings: Env }>()
         "code" in e &&
         (e as Error & { code: unknown }).code === "23505"
       ) {
-        return c.json({ status: "duplicate" }, 200);
+        return c.json(RECEIVED_RESPONSE, 202);
       }
       throw e;
     }
@@ -70,7 +77,9 @@ export const anaLead = new Hono<{ Bindings: Env }>()
         email:  body.email,
         name:   body.name,
         phone:  body.phone,
-        source: "ana-chatbot",
+        source: SOURCE,
+      }).catch((error: unknown) => {
+        console.error("webhook.ana_lead.hubspot_failed", error);
       })
     );
 
@@ -78,15 +87,17 @@ export const anaLead = new Hono<{ Bindings: Env }>()
       logAudit(c.env, {
         action:    "webhook.ana_lead.capture",
         resource:  `lead:${id}`,
-        ip:        c.req.header("CF-Connecting-IP") ?? c.req.header("X-Forwarded-For"),
-        userAgent: c.req.header("User-Agent"),
+        ip,
+        userAgent: ua,
         meta: {
-          email:       body.email,
+          source:      SOURCE,
           utmSource:   body.utmSource,
           utmCampaign: body.utmCampaign,
         },
+      }).catch((error: unknown) => {
+        console.error("webhook.ana_lead.audit_failed", error);
       })
     );
 
-    return c.json({ status: "captured", id }, 201);
+    return c.json(RECEIVED_RESPONSE, 202);
   });

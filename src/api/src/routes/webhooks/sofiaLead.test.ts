@@ -41,9 +41,14 @@ import { pushLeadToHubSpot } from "../../lib/hubspot";
 import { logAudit } from "../../lib/audit";
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
+  const rateLimitKv = {
+    get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue(undefined),
+  } as unknown as KVNamespace;
+
   return {
     SESSIONS: {} as KVNamespace,
-    RATE_LIMIT: {} as KVNamespace,
+    RATE_LIMIT: rateLimitKv,
     FILES: {} as R2Bucket,
     APP_URL: "https://app.rjmais.com.br",
     ENVIRONMENT: "test",
@@ -96,32 +101,32 @@ describe("POST /webhooks/sofia-lead", () => {
     vi.clearAllMocks();
   });
 
-  it("should return 201 with status captured when lead is new", async () => {
+  it("should return 202 with a generic received status when lead is new", async () => {
     const res = await post(buildApp(), { email: "sofia@lead.com" });
-    expect(res.status).toBe(201);
-    const json = await res.json<{ status: string; id: string }>();
-    expect(json.status).toBe("captured");
-    expect(json.id).toMatch(/^[0-9a-f]{32}$/);
+    expect(res.status).toBe(202);
+    const json = await res.json<{ status: string; id?: string }>();
+    expect(json.status).toBe("received");
+    expect(json.id).toBeUndefined();
   });
 
-  it("should return 200 with status duplicate when email exists", async () => {
+  it("should return the same generic response when email exists", async () => {
     mockDbState.existing = { id: "existing-id-001" };
     const res = await post(buildApp(), { email: "dup@lead.com" });
-    expect(res.status).toBe(200);
-    const json = await res.json<{ status: string; id: string }>();
-    expect(json.status).toBe("duplicate");
-    expect(json.id).toBe("existing-id-001");
+    expect(res.status).toBe(202);
+    const json = await res.json<{ status: string; id?: string }>();
+    expect(json.status).toBe("received");
+    expect(json.id).toBeUndefined();
   });
 
-  it("should return 200 with status duplicate on Postgres 23505 race condition", async () => {
+  it("should return the same generic response on Postgres 23505 race condition", async () => {
     mockDbState.insertError = Object.assign(
       new Error('duplicate key value violates unique constraint "leads_email_key"'),
       { code: "23505" }
     );
     const res = await post(buildApp(), { email: "race@lead.com" });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const json = await res.json<{ status: string }>();
-    expect(json.status).toBe("duplicate");
+    expect(json.status).toBe("received");
   });
 
   it("should return 400 when email is invalid", async () => {
@@ -159,5 +164,19 @@ describe("POST /webhooks/sofia-lead", () => {
     mockDbState.insertError = new Error("connection timeout");
     const res = await post(buildApp(), { email: "crash@sofia.com" });
     expect(res.status).toBe(500);
+  });
+
+  it("should return 429 when rate limited", async () => {
+    const env = makeEnv({
+      RATE_LIMIT: {
+        get: vi.fn().mockResolvedValue("10"),
+        put: vi.fn().mockResolvedValue(undefined),
+      } as unknown as KVNamespace,
+    });
+    const res = await post(buildApp(), { email: "limited@sofia.com" }, env);
+
+    expect(res.status).toBe(429);
+    const json = await res.json<{ error: string }>();
+    expect(json.error).toBe("rate_limited");
   });
 });
