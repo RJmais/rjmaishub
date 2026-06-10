@@ -26,6 +26,8 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --allowedTools "Read,Write,Edit,Glob,Grep,Bash(git:*),Bash(mkdir:*),Bash(date:*),Bash(ls:*),Bash(cat:*)"
           prompt: |
             Você é o operador de e-commerce e growth orgânico da The BB's Box (thebbsbox.com).
             Execute a rotina definida em outputs/social-engagement-2026-06-09/captions.md e nas
