@@ -7,6 +7,8 @@ Pacote gerado pela rotina de growth orgânico. Artes criadas no Canva (conta con
 | Story "This or That" (enquete) | https://www.canva.com/d/KtPLKpRXblDSJc4 | https://www.canva.com/d/hYLidxhPnBy-JBx |
 | Story "Last Call – Weekly Edit" | https://www.canva.com/d/4YOULBXctcQmBT_ | https://www.canva.com/d/bXJFWuLaGAUeBXE |
 | Story "Comment EDIT" (CTA de DM) | https://www.canva.com/d/OFqyxGf8tda34f6 | https://www.canva.com/d/mD9IjObKldDiH1Q |
+| Post de votação A/B (Instagram Feed) | https://www.canva.com/d/JMI1UkvD7YFC2m5 | https://www.canva.com/d/YmaGSK8tWwKS__F |
+| Foto "The Weekly Edit" (Google Business Profile) | https://www.canva.com/d/4tuHCEhsl9fuGKr | https://www.canva.com/d/QOpctCAuRvblzIH |
 
 ## Links rastreáveis (Bitly + UTM) — usar SEMPRE estes por canal
 
@@ -74,6 +76,22 @@ Every piece in this week's edit was chosen to work for more than one of these mo
 **CTA final:** Ready to skip the "what do I wear" spiral? [Shop this week's edit →](https://thebbsbox.com/pages/weekly-edit)
 
 ---
+
+## Post de votação A/B — Instagram Feed (legendas)
+
+- **EN:** "You pick this week's edit 🤍 A or B? Vote in the comments — the winner joins the Weekly Edit. (And yes, we'll DM you the link if you comment EDIT.)"
+- **PT-BR (conteúdo Brasil):** "Essa semana quem escolhe é você 🤍 A ou B? Vota nos comentários — a vencedora entra na Weekly Edit. Comenta EDIT que a gente te manda o link."
+
+## Foto GBP — instruções
+
+1. Baixar a arte "The Weekly Edit" do Canva (link na tabela acima).
+2. No Google Business Profile, adicionar como foto + criar update "What's new" com o texto da seção GBP e o link https://bit.ly/4us3tbR.
+
+## Medição de cliques (Bitly)
+
+- A API de analytics do Bitly exige plano pago (não fazer upgrade — proibido).
+- Ver cliques GRÁTIS no painel web: https://app.bitly.com → Links. Conferir 1x por dia.
+- Complemento: no Shopify Analytics, filtrar sessões por utm_campaign=weekly_edit / gbp_whats_new.
 
 ## Produtos/SEO — checklist para quando o Shopify reconectar
 
