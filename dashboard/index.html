@@ -69,17 +69,29 @@
   <div id="alert" class="alert"></div>
   <div class="msg" id="runMsg" style="margin:-12px 0 16px"></div>
 
+  <div id="activate" class="tokenbox" style="display:none">
+    <div class="label" style="color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em">Ativação (uma única vez neste dispositivo)</div>
+    <p>Para o botão disparar sozinho, cole seu código de ativação. Como criar (1x):
+       <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" style="color:var(--accent)">github.com/settings/personal-access-tokens/new</a>
+       → Repository access: <b>Only select repositories → bbsbox</b> → Permissions → Actions: <b>Read and write</b> → Generate → copie o código.
+       Ele fica salvo só neste navegador; depois disso é 1 clique para sempre.</p>
+    <div class="row">
+      <input id="actInput" type="password" placeholder="github_pat_..." autocomplete="off" />
+      <button id="btnActivate">Ativar e rodar</button>
+    </div>
+  </div>
+
   <div class="cards">
     <div class="card"><div class="label">Última execução</div><div class="value" id="cLast">—</div><div class="hint" id="cLastWhen"></div></div>
     <div class="card"><div class="label">Taxa de sucesso (últ. 20)</div><div class="value" id="cRate">—</div><div class="hint" id="cRateHint"></div></div>
     <div class="card"><div class="label">Próxima execução</div><div class="value" id="cNext">—</div><div class="hint">agendamento automático</div></div>
-    <div class="card"><div class="label">Relatórios gerados</div><div class="value" id="cReports">—</div><div class="hint">em outputs/reports/</div></div>
+    <div class="card"><div class="label">Relatórios gerados</div><div class="value" id="cReports">—</div><div class="hint">arquivados no repositório</div></div>
   </div>
 
-  <h2>Execuções recentes</h2>
+  <h2>Últimas 3 execuções</h2>
   <div id="runs">Carregando…</div>
 
-  <h2>Relatórios da rotina</h2>
+  <h2>Relatório atual <a href="https://github.com/pilarmoret/bbsbox/tree/main/outputs/reports" target="_blank" style="font-size:.7rem;color:var(--muted);text-decoration:none">(arquivo completo ↗)</a></h2>
   <div id="reports">Carregando…</div>
 
   <footer>RJ+ / The BB's Box — atualiza sozinho a cada 60s · dados via API pública do GitHub</footer>
@@ -90,8 +102,12 @@ const OWNER = 'pilarmoret', REPO = 'bbsbox', WF = 'growth-routine.yml';
 const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
 const $ = id => document.getElementById(id);
 
+const tokenKey = 'bbsbox_activation';
 function headers() {
-  return { 'Accept': 'application/vnd.github+json' };
+  const h = { 'Accept': 'application/vnd.github+json' };
+  const t = localStorage.getItem(tokenKey);
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
 }
 const fmt = iso => new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(iso));
 
@@ -140,7 +156,7 @@ async function loadRuns() {
       alertEl.innerHTML = '<strong>⚠ As execuções mais recentes falharam.</strong> Causa mais comum: créditos da API Anthropic esgotados — verifique em <a href="https://console.anthropic.com/settings/billing" target="_blank" style="color:var(--accent)">console.anthropic.com → Billing</a>. Detalhes no log da execução abaixo.';
     } else { alertEl.style.display = 'none'; }
 
-    el.innerHTML = runs.map(r => {
+    el.innerHTML = runs.slice(0, 3).map(r => {
       const b = r.status !== 'completed' ? '<span class="badge b-run">rodando</span>'
         : r.conclusion === 'success' ? '<span class="badge b-ok">sucesso</span>'
         : '<span class="badge b-fail">falhou</span>';
@@ -150,7 +166,7 @@ async function loadRuns() {
     }).join('');
   } catch (e) {
     $('runs').textContent = e.message === 'rate'
-      ? 'Limite da API do GitHub atingido — salve um token acima para aumentar o limite, ou aguarde alguns minutos.'
+      ? '⚠ Limite de leituras anônimas do GitHub atingido. Clique em \u25b6 Rodar agora e faça a ativação única — o painel passa a ter leituras ilimitadas e atualização ao vivo.'
       : 'Erro ao carregar execuções (' + e.message + ').';
   }
 }
@@ -164,41 +180,81 @@ function md(s) {
   return s.split(/\n{2,}/).map(p => p.startsWith('<') ? p : '<p>' + p + '</p>').join('');
 }
 
+function fmtName(n) {
+  const m = n.match(/(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]} às ${m[4]}:${m[5]}` : n;
+}
+
 async function loadReports() {
   const el = $('reports');
   try {
     const files = await gh('/contents/outputs/reports');
-    const mds = files.filter(f => f.name.endsWith('.md')).sort((a, b) => b.name.localeCompare(a.name)).slice(0, 10);
+    const mds = files.filter(f => f.name.endsWith('.md')).sort((a, b) => b.name.localeCompare(a.name));
     $('cReports').textContent = mds.length;
     if (!mds.length) { el.textContent = 'Nenhum relatório ainda.'; return; }
-    el.innerHTML = mds.map(f => `<details class="report" data-url="${f.download_url}"><summary>📄 ${f.name}</summary><div class="md">carregando…</div></details>`).join('');
-    el.querySelectorAll('details').forEach(d => d.addEventListener('toggle', async () => {
-      if (d.open && !d.dataset.loaded) {
-        d.dataset.loaded = '1';
-        const t = await (await fetch(d.dataset.url)).text();
-        d.querySelector('.md').innerHTML = md(t);
-      }
-    }));
+    const latest = mds[0];
+    const agora = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'medium', timeZone: 'America/Sao_Paulo' }).format(new Date());
+    const banner = '📄 Gerado ' + fmtName(latest.name) + ' &nbsp;·&nbsp; <span style="color:var(--green)">✓ conferido agora às ' + agora + ' — este é o mais recente</span>';
+    if (el.dataset.shown === latest.name) {
+      const b = el.querySelector('.fresh'); if (b) b.innerHTML = banner;
+      return;
+    }
+    el.innerHTML = '<div class="report" style="padding:16px"><div class="fresh" style="color:var(--accent);font-size:.8rem;margin-bottom:10px">' + banner + '</div><div class="md">carregando…</div></div>';
+    const t = await (await fetch(latest.download_url)).text();
+    el.querySelector('.md').innerHTML = md(t);
+    el.dataset.shown = latest.name;
   } catch (e) {
+    if (e.message === 'rate') { el.textContent = '⚠ Limite de leituras anônimas atingido — faça a ativação única (botão ▶) para leituras ilimitadas.'; return; }
     $('cReports').textContent = '0';
     el.textContent = e.message === 'http404'
       ? 'Nenhum relatório gerado ainda — a pasta outputs/reports/ será criada pela rotina.'
-      : 'Erro ao carregar relatórios.';
+      : 'Erro ao carregar relatório.';
   }
 }
 
-$('btnRun').addEventListener('click', () => {
+async function dispatchRun() {
   const msg = $('runMsg');
-  window.open(`https://github.com/${OWNER}/${REPO}/actions/workflows/${WF}`, '_blank');
-  msg.textContent = 'ℹ Na página que abriu, clique em "Run workflow" → "Run workflow". O resultado aparece aqui em ~30s.';
-  msg.className = 'msg warn';
-  setTimeout(loadRuns, 30000);
+  msg.textContent = '⏳ Disparando a rotina…'; msg.className = 'msg warn';
+  try {
+    const r = await fetch(`${API}/actions/workflows/${WF}/dispatches`, {
+      method: 'POST', headers: { ...headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: 'main' })
+    });
+    if (r.status === 204) {
+      msg.textContent = '✅ Rotina disparada! Acompanhando — o relatório aparece aqui sozinho (~5 min).';
+      msg.className = 'msg ok';
+      let n = 0;
+      const t = setInterval(() => { loadRuns(); loadReports(); if (++n >= 24) clearInterval(t); }, 20000);
+    } else if (r.status === 401 || r.status === 403) {
+      localStorage.removeItem(tokenKey);
+      msg.textContent = '⚠ Código de ativação inválido/expirado — clique de novo para reativar.';
+      msg.className = 'msg fail';
+    } else {
+      msg.textContent = '❌ Falha ao disparar (HTTP ' + r.status + ').'; msg.className = 'msg fail';
+    }
+  } catch { msg.textContent = '❌ Erro de rede.'; msg.className = 'msg fail'; }
+}
+
+$('btnRun').addEventListener('click', () => {
+  if (localStorage.getItem(tokenKey)) { dispatchRun(); return; }
+  $('activate').style.display = 'block';
+  $('actInput').focus();
+});
+
+$('btnActivate').addEventListener('click', () => {
+  const v = $('actInput').value.trim();
+  if (!v) return;
+  localStorage.setItem(tokenKey, v);
+  $('actInput').value = '';
+  $('activate').style.display = 'none';
+  dispatchRun();
 });
 
 $('btnRefresh').addEventListener('click', () => { loadRuns(); loadReports(); });
 
 loadRuns(); loadReports();
-setInterval(loadRuns, 60000);
+const refreshMs = localStorage.getItem(tokenKey) ? 60000 : 300000;
+setInterval(() => { loadRuns(); loadReports(); }, refreshMs);
 </script>
 </body>
 </html>
