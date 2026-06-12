@@ -250,7 +250,20 @@ $('btnActivate').addEventListener('click', () => {
   dispatchRun();
 });
 
-$('btnRefresh').addEventListener('click', () => { loadRuns(); loadReports(); });
+$('btnRefresh').addEventListener('click', async function() {
+  const msg = $('runMsg');
+  this.disabled = true; this.textContent = '🔄 Atualizando…';
+  msg.textContent = ''; 
+  try {
+    await Promise.all([loadRuns(), loadReports()]);
+    const agora = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'medium', timeZone: 'America/Sao_Paulo' }).format(new Date());
+    msg.textContent = '✓ Painel atualizado às ' + agora + ' — dados ao vivo do GitHub.';
+    msg.className = 'msg ok';
+  } catch (e) {
+    msg.textContent = '❌ Erro ao atualizar: ' + e.message; msg.className = 'msg fail';
+  }
+  this.disabled = false; this.textContent = '↻ Atualizar';
+});
 
 loadRuns(); loadReports();
 const refreshMs = localStorage.getItem(tokenKey) ? 60000 : 300000;
