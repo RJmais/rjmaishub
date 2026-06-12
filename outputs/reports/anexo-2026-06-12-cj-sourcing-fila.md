@@ -1,3 +1,9 @@
+## ⏱ STATUS 12/jun 23:30 UTC (validado na loja)
+**CONCLUÍDOS (6, tags trocadas p/ `cj-connected`, margens 80–92%):** Chic Elise Midi Dress · Hot Pink Trench Coat · Palazzo Elegant Pants · Genuine Leather Handbag · Floral Embroidery Party Dress · Y2K Zipper Denim Overalls (+ Blazer Dress e Boho Maxi de antes)
+**PARCIAIS (5, reabrir conexão no app):** Alicia Mini Dress (faltam White XS/XL) · Corset (3XL–6XL) · Floral Rhinestone (White+Red) · Sleeveless Flower Dresses (Mint/Light Green/Lavender + 3XL) · Micro Swimwear (66/72 — conectar 2º produto CJ p/ as outras cores)
+**PENDENTES:** 25 — destaque para Pointy News Heels (nº 1 em vendas) e Anti-theft Bag, que eram o topo da fila
+**Pendências da dona:** lista Ship From BR (p/ tag `cj-br` + collection Inverno Elegante BR) · links dos produtos CJ conectados (p/ eu trocar as fotos em alta via API)
+
 # Fila de Sourcing CJ — 35 produtos (ordem de ataque por vendas)
 *Gerado 12/jun/2026 · App CJ JÁ CONECTADO à loja (location `cjdropshipping` ativa)*
 
