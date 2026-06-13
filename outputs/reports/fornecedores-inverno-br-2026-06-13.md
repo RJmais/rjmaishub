@@ -39,6 +39,32 @@ com cara de marketplace barato.
 3. **Piloto de 1 fornecedor / 5–8 peças** antes de volume (regra de due diligence 2026): subir como produtos novos, tag `cj-br` (a collection "Inverno Elegante BR" acende sozinha), testar 1 pedido real medindo prazo porta-a-porta.
 4. Cruzar com o **Brasil Edit** já aprovado (canga, crochê, semijoias) — tricô entra como a âncora de inverno desse edit.
 
+## 🔁 RODADA 2 — mais fornecedores (pesquisa 13/jun, 2ª busca)
+
+### Alfaiataria & casacos elegantes (o outro pilar do inverno elegante)
+| Fornecedor | Foco | Por que entra | Contato |
+|---|---|---|---|
+| **Atacado Principessa** | Moda social/alfaiataria feminina | Posiciona-se como "a melhor de alfaiataria do Brasil" — sofisticação, camisas/blusas/vestidos | atacadoprincipessa.com.br |
+| **Bella Dama** | Alfaiataria premium direto da fábrica | 10+ anos, atacado e varejo — calça pantalona, conjunto estruturado | @belladamaloja_ (IG) |
+| **ÄLLIE / Saphir** | Alfaiataria feminina atacado | Linha estruturada elegante | alliebrand.com.br |
+| **Use Criativa** | Conjuntos e calças de alfaiataria | Corte impecável, pantalonas, saias longas | usecriativa.com.br |
+| **Nova Versão** | Feminino fabricação própria (desde 2009) | Pronta entrega, lançamentos quinzenais, envia p/ todo Brasil | @novaversaoroupas (IG) |
+| **Bella Lu Confecções** | Feminino atacado, pronta entrega | Tendências atuais, envio nacional | bellaluconfeccoes.com.br |
+| **Liviana Atacado / Difato** | Feminino atacado geral | Reforço de catálogo de inverno | livianaatacado.com.br · difatoatacado.com.br |
+
+### Plataforma com integração Shopify (reforço)
+| Plataforma | Nota |
+|---|---|
+| **EPROLO** | Dropshipping de vestuário com integração Shopify, avaliação 4,8/5 na App Store — opção de automação além do Dropify (validar catálogo de inverno elegante e prazo p/ BR) |
+
+### Leitura da rodada 2
+Agora temos os **dois pilares do inverno elegante** cobertos por fornecedores nacionais:
+**tricô** (Monte Sião/Nova Friburgo — Nível 1 acima) + **alfaiataria/casacos** (Atacado
+Principessa, Bella Dama, ÄLLIE, Use Criativa). Para a coleção, a dupla ideal é *um cardigan
+de tricô encorpado + um casaco/blazer estruturado* — cobre o look "terceira peça" inteiro.
+Sugestão de primeiros contatos: **Patena Tricot** (tricô, sem CNPJ) + **Atacado Principessa**
+(alfaiataria) + avaliar **Dropify ou EPROLO** para automação.
+
 ## Regra de tag (para a collection funcionar)
 Todo produto nacional com entrega rápida no BR recebe a tag **`cj-br`** → entra
 automaticamente na smart collection *Inverno Elegante BR — Entrega 2–3 Dias*
@@ -53,3 +79,6 @@ podem usar a mesma tag — a regra é "entrega rápida BR", não o fornecedor es
 - [Monte Sião Tricot](https://montesiaotricot.com.br/) · [Patena Tricot](https://www.patenatricot.com.br/) · [Vera Tricot](https://www.veratricot.com.br/) · [Camila Ribeiro Tricot](https://www.camilaribeirotricot.com.br/) · [Loja do Tricô](https://www.lojadotrico.com.br/)
 - [Atacadão da Roupa — Tricot feminino](https://www.atacadaodaroupa.com/roupas-tricot-feminina) · [ZAX — Top fornecedores do Brás](https://www.zaxapp.com.br/fornecedores/top-fornecedores-do-bras)
 - [Dropify (via Shopify App Store / blog Shopify dropshipping)](https://www.shopify.com/br/blog/melhores-aplicativos-de-dropshipping)
+- [Atacado Principessa — alfaiataria feminina](https://www.atacadoprincipessa.com.br/) · [Bella Dama (IG)](https://www.instagram.com/belladamaloja_/) · [ÄLLIE/Saphir — alfaiataria atacado](https://alliebrand.com.br/pages/roupas-alfaiataria-feminina-atacado) · [Use Criativa — alfaiataria](https://www.usecriativa.com.br/alfaiararia-feminina)
+- [Nova Versão (IG)](https://www.instagram.com/novaversaoroupas/) · [Bella Lu Confecções](https://www.bellaluconfeccoes.com.br/) · [Liviana Atacado](https://www.livianaatacado.com.br/) · [Difato Atacado](https://www.difatoatacado.com.br)
+- [EPROLO — apparel dropshipping (integração Shopify)](https://eprolo.com/pt/apparel-dropshipping-suppliers/)
