@@ -12,11 +12,11 @@ e entregue em até 10 dias, para o Brasil todo. O argumento de venda não é pre
 ---
 
 ## ✍️ Copy da página da coleção (JÁ aplicada na loja)
-> **O inverno brasileiro com a elegância que você procura — e a rapidez que você merece.**
-> Uma curadoria de peças de ateliês e fábricas nacionais: tricôs encorpados, casacos
-> estruturados e alfaiataria que aquece sem abrir mão do caimento. Cada peça sai de dentro
-> do Brasil e chega em até 10 dias úteis, sem surpresa de taxa de importação.
-> Menos peças, melhores peças, mais perto de você. Curadoria — não catálogo.
+> **O inverno elegante que vale a pequena espera.**
+> Uma curadoria de peças de inverno — casacos, blazers estruturados, tricôs e blusas de
+> manga longa — escolhidas a dedo. Enviadas para todo o Brasil, com chegada em até 10 dias
+> úteis (bem mais rápido que as 4 a 6 semanas do importado comum).
+> Menos peças, melhores peças. Curadoria — não catálogo.
 
 ---
 
@@ -68,7 +68,7 @@ chegando em até 10 dias." Mostra desembrulho + caimento do tricô. Sem cara de 
 > ⚠️ Edition #003 sai SEG 15/jun (agendada) e #004 QUI 18/jun. Este texto é candidato a #004
 > ou a uma edição especial — escolher imagem ainda não usada (ver lista na MEMORY).
 
-**Título:** "Made in Brazil: o inverno que chega em dois dias"
+**Título:** "Made in Brazil: o segredo mais bem-guardado do inverno elegante"
 **Subtítulo:** The Edit · edição especial — por que a malha nacional é o segredo mais
 bem-guardado do inverno elegante.
 
@@ -89,7 +89,7 @@ bem-guardado do inverno elegante.
 
 ## 🔎 Google Business Profile (update semanal)
 **EN:** New: our Brazilian winter edit — curated knitwear and structured coats, shipped
-locally and arriving in 2–3 days, no import fees. Elegant women's fashion, curated boutique.
+across Brazil in up to 10 business days. Elegant women's fashion, curated boutique.
 **PT (descrição/keywords):** moda feminina elegante, tricô de inverno, curadoria,
 entrega rápida Brasil, casaco elegante. *(nunca: barato/desconto/promoção)*
 
