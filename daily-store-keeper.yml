@@ -1,0 +1,92 @@
+name: BB's Box — Daily Store-Keeper
+
+# Mantém a loja "viva": higiene de catálogo + conteúdo orgânico + relatório, 1x/dia.
+# Substitui/consolida o growth-routine.yml (que era só conteúdo).
+# SETUP (uma vez): mover para .github/workflows/, configurar secrets
+#   (ANTHROPIC_API_KEY) e a conexão MCP da Shopify (mesmas credenciais da sessão manual).
+# Guardrails e padrões completos: ler outputs/MEMORY.md (Parte A) ANTES de agir.
+
+on:
+  schedule:
+    - cron: '0 13 * * *'   # 10:00 America/Sao_Paulo — passada diária de manutenção+conteúdo
+    - cron: '0 0 * * *'    # 21:00 America/Sao_Paulo — 2ª passada de conteúdo (opcional)
+  workflow_dispatch: {}
+
+jobs:
+  store-keeper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Claude store-keeper routine
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          claude_args: |
+            --allowedTools "Read,Write,Edit,Glob,Grep,TodoWrite,WebFetch,WebSearch,Bash(git:*),Bash(mkdir:*),Bash(date:*),Bash(ls:*),Bash(python3:*),mcp__Shopify__*"
+          prompt: |
+            Você é o operador de e-commerce e growth da The BB's Box (thebbsbox.com).
+            PRIMEIRO PASSO OBRIGATÓRIO: leia outputs/MEMORY.md por completo — a PARTE A
+            (Diretrizes Permanentes) manda em tudo; a PARTE B é o estado atual. Siga-as à risca.
+
+            Execute a rotina diária abaixo e, ao final, grave um relatório em
+            outputs/reports/<data>-<hora>-store-keeper.md, atualize a PARTE B da MEMORY.md,
+            e faça commit + push numa branch, abrindo PR draft (espere o CI ficar verde e
+            faça squash merge). Relatório SEMPRE (mesmo sem mudanças).
+
+            ── PASSO 1 · DIAGNÓSTICO (snapshot) ──
+            Conte e compare com o último relatório: produtos ativos; ativos por vendor;
+            criados desde o último run; esgotados (estoque rastreado 0, não-POD); variantes
+            abaixo do piso; novidades sem tradução PT. Liste o que precisa de ação.
+
+            ── PASSO 2 · HIGIENE DE CATÁLOGO (regras A3 da MEMORY) ──
+            Para CADA produto criado/alterado desde o último run (especialmente imports CJ,
+            que entram ativos e crus):
+              a) título conciso EN (sem keyword-stuffing/marca de fornecedor/sufixos);
+              b) descrição no padrão da casa (remover hotlinks de fornecedor, "Asian sizes",
+                 tabelas, packing list; preservar fatos reais);
+              c) productType real; vendor "The BB's Box";
+              d) variante < piso ($29,97 vestuário / $24,97 bijuteria) → subir ao piso;
+                 compareAt ≤ preço → remover. NUNCA reprecificar vendors Shopify Collective.
+              e) tags limpas; foto <800px → tag needs-photo-refresh;
+              f) item fora do posicionamento/estação → tag de revisão + coleção adequada
+                 (ex.: Trendy), NÃO draftar peça recém-importada sem ok da dona.
+            Esgotados (0 rastreado, não-POD) → DRAFT + tag oos-hidden-<aaaa-mm> (reativar quando
+            repuser). Reconferir tags oos-hidden e long-tail-cut semanalmente.
+
+            ── PASSO 3 · FORNECEDOR/CJ (A7) ──
+            Revalidar migrate-to-cj / cj-connected / cj-br contra o estoque da location
+            cjdropshipping; atualizar tags; validar margem ≥55%. Nunca pôr peça não-conectada
+            numa coleção de prazo curto. Honestidade de prazo é inegociável.
+
+            ── PASSO 4 · INTEGRIDADE DE VITRINE ──
+            Garantir que weekly-edit, os 3 mundos, New Arrivals (alimenta a home) e as coleções
+            de campanha não fiquem vazias; New Arrivals sempre com novidades recentes.
+
+            ── PASSO 5 · CONTEÚDO ORGÂNICO (A4/A5) ──
+            Conteúdo complementar à Minta (IG/TikTok), blog The Edit conforme calendário
+            (seg+qui; não duplicar edição agendada; imagem nunca repetida), update GBP.
+            Só destacar peças US$45+; teste "parece Shein? → não publica".
+
+            ── PASSO 6 · TRADUÇÃO (A6) ──
+            Sinalizar novidades sem PT; se Translate & Adapt não cobrir, registrar PT via API
+            das peças-herói. Copy de vitrine nova nasce em inglês.
+
+            ── PASSO 7 · RELATÓRIO + MEMÓRIA ──
+            Relatório no formato padrão (1ª linha = status de frescor) + atualizar PARTE B.
+
+            CONSTRAINTS INEGOCIÁVEIS (A9):
+            - Proibido anúncio pago / ferramenta paga / upgrade.
+            - Nunca apagar produto/coleção/post; cortes = DRAFT reversível com tag datada.
+            - Nunca enganar o cliente (prazo/isenção/foto). Risco de marca → ARCHIVE + avisar.
+            - Mudança grande/ambígua ou outward-facing → registrar como pendência p/ a dona,
+              NÃO executar sozinho.
+            - Email: só rascunho, respeitando segmentação país/idioma.
+
+            LINKS RASTREÁVEIS: IG/TikTok https://bit.ly/43qQJXX | FB https://bit.ly/4uowANi |
+            GBP https://bit.ly/4us3tbR
