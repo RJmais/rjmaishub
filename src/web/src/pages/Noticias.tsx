@@ -1,3 +1,5 @@
+import EmbeddedFrame from "../components/EmbeddedFrame";
+
 export default function Noticias() {
   return (
     <section className="space-y-4">
@@ -9,13 +11,7 @@ export default function Noticias() {
         </p>
       </header>
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <iframe
-          src="https://rjmais.com/noticias/"
-          title="RJ+ News"
-          className="w-full"
-          style={{ height: "min(80dvh, 800px)", border: 0 }}
-          loading="lazy"
-        />
+        <EmbeddedFrame src="https://rjmais.com/noticias/" title="RJ+ News" />
       </div>
     </section>
   );

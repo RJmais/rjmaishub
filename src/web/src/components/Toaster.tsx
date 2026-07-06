@@ -53,7 +53,7 @@ function ToastItem({
 
   return (
     <div
-      className={`${bgColor} ${textColor} px-4 py-3 rounded-md shadow-lg max-w-xs animate-pulse`}
+      className={`${bgColor} ${textColor} px-4 py-3 rounded-md shadow-lg max-w-xs`}
       role="status"
       aria-live="polite"
     >
