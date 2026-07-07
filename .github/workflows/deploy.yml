@@ -51,4 +51,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: src/api
-          command: deploy --env ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+          # main deploys the REAL worker "rjmaishub-api" (top-level config; the one
+          # with secrets and traffic). "--env production" was creating a parallel
+          # "rjmaishub-api-production" worker with no secrets and no traffic.
+          command: ${{ github.ref == 'refs/heads/main' && 'deploy' || 'deploy --env staging' }}
