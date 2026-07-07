@@ -329,14 +329,16 @@ describe("POST /webhooks/ana-lead", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Unexpected DB error (non-23505) bubbles to 500
+  // Unexpected DB error (non-23505): capture must survive — lead still goes
+  // to HubSpot and the webhook answers 202 (DB is best-effort).
   // -------------------------------------------------------------------------
-  it("should return 500 when the DB throws an unexpected non-23505 error", async () => {
+  it("should still accept the lead (202) and push to HubSpot when the DB throws a non-23505 error", async () => {
     mockDbState.insertError = new Error("connection timeout");
     const app = buildApp();
 
     const res = await post(app, { email: "crash@lead.com" });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(202);
+    expect(pushLeadToHubSpot).toHaveBeenCalledOnce();
   });
 
   it("should return 429 when rate limited", async () => {

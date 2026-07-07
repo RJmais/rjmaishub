@@ -136,6 +136,10 @@ const esquemaIncidente = z.object({
   resolvidoEm: z.number().int().positive().nullable().default(null),
 });
 
+const ERRO_BANCO = {
+  error: "Banco indisponível no momento. O histórico de incidentes volta quando a conexão for restabelecida.",
+} as const;
+
 painel.get("/incidentes", async (c) => {
   const q = c.req.query("q")?.trim() ?? "";
   const estado = c.req.query("estado")?.trim() ?? "";
@@ -161,8 +165,13 @@ painel.get("/incidentes", async (c) => {
   for (const filtro of filtros) {
     consulta = consulta.where(filtro);
   }
-  const linhas = await consulta.orderBy(desc(painelIncidentes.abertoEm)).limit(100);
-  return c.json({ total: linhas.length, incidentes: linhas });
+  try {
+    const linhas = await consulta.orderBy(desc(painelIncidentes.abertoEm)).limit(100);
+    return c.json({ total: linhas.length, incidentes: linhas });
+  } catch (e) {
+    console.error("painel.incidentes.db_unavailable", e);
+    return c.json(ERRO_BANCO, 503);
+  }
 });
 
 painel.post("/incidentes", zValidator("json", esquemaIncidente), async (c) => {
@@ -170,13 +179,18 @@ painel.post("/incidentes", zValidator("json", esquemaIncidente), async (c) => {
   const agora = Date.now();
   const db = getDb(c.env);
 
-  await db
-    .insert(painelIncidentes)
-    .values({ ...dados, criadoEm: agora, atualizadoEm: agora })
-    .onConflictDoUpdate({
-      target: painelIncidentes.id,
-      set: { ...dados, atualizadoEm: agora },
-    });
+  try {
+    await db
+      .insert(painelIncidentes)
+      .values({ ...dados, criadoEm: agora, atualizadoEm: agora })
+      .onConflictDoUpdate({
+        target: painelIncidentes.id,
+        set: { ...dados, atualizadoEm: agora },
+      });
+  } catch (e) {
+    console.error("painel.incidentes.db_unavailable", e);
+    return c.json(ERRO_BANCO, 503);
+  }
 
   return c.json({ ok: true, id: dados.id }, 201);
 });
@@ -192,11 +206,17 @@ painel.patch("/incidentes/:id", zValidator("json", esquemaAtualizacao), async (c
   const dados = c.req.valid("json");
   const db = getDb(c.env);
 
-  const [existente] = await db
-    .select()
-    .from(painelIncidentes)
-    .where(eq(painelIncidentes.id, id))
-    .limit(1);
+  let existente;
+  try {
+    [existente] = await db
+      .select()
+      .from(painelIncidentes)
+      .where(eq(painelIncidentes.id, id))
+      .limit(1);
+  } catch (e) {
+    console.error("painel.incidentes.db_unavailable", e);
+    return c.json(ERRO_BANCO, 503);
+  }
   if (!existente) return c.json({ error: "Incidente não encontrado." }, 404);
 
   await db

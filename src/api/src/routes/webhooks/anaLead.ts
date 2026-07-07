@@ -67,19 +67,23 @@ export const anaLead = new Hono<{ Bindings: Env }>()
     }
     const body = validation.data;
 
-    const db   = getDb(c.env);
-    const now  = ts();
+    const now = ts();
+    const id  = randomToken(16);
 
-    const [existing] = await db
-      .select({ id: leadsTable.id })
-      .from(leadsTable)
-      .where(eq(leadsTable.email, body.email))
-      .limit(1);
-
-    if (existing) return c.json(RECEIVED_RESPONSE, 202);
-
-    const id = randomToken(16);
+    // Postgres em melhor esforço: indisponibilidade do banco NUNCA pode
+    // derrubar a captação — o HubSpot é o destino garantido do lead e faz
+    // o dedup por e-mail. (Incidente 07/07: DATABASE_URL inalcançável de
+    // Workers travava a requisição inteira.)
     try {
+      const db = getDb(c.env);
+      const [existing] = await db
+        .select({ id: leadsTable.id })
+        .from(leadsTable)
+        .where(eq(leadsTable.email, body.email))
+        .limit(1);
+
+      if (existing) return c.json(RECEIVED_RESPONSE, 202);
+
       await db.insert(leadsTable).values({
         id,
         email:       body.email,
@@ -102,7 +106,7 @@ export const anaLead = new Hono<{ Bindings: Env }>()
       ) {
         return c.json(RECEIVED_RESPONSE, 202);
       }
-      throw e;
+      console.error("webhook.ana_lead.db_unavailable — seguindo só com HubSpot", e);
     }
 
     const ctx = c.executionCtx;

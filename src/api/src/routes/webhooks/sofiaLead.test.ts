@@ -160,10 +160,11 @@ describe("POST /webhooks/sofia-lead", () => {
     expect(pushLeadToHubSpot).not.toHaveBeenCalled();
   });
 
-  it("should return 500 for unexpected DB errors", async () => {
+  it("should still accept the lead (202) and push to HubSpot for unexpected DB errors", async () => {
     mockDbState.insertError = new Error("connection timeout");
     const res = await post(buildApp(), { email: "crash@sofia.com" });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(202);
+    expect(pushLeadToHubSpot).toHaveBeenCalledOnce();
   });
 
   it("should return 429 when rate limited", async () => {
