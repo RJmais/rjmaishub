@@ -9,8 +9,9 @@ let _cachedUrl: string | null = null;
 export function getDb(env: Env) {
   if (!_db || _cachedUrl !== env.DATABASE_URL) {
     const client = postgres(env.DATABASE_URL, {
-      prepare: false, // Required for Supabase PgBouncer / transaction pooler
-      max: 1,         // Workers have many short-lived isolates — keep pool minimal
+      prepare: false,     // Required for Supabase PgBouncer / transaction pooler
+      max: 1,             // Workers have many short-lived isolates — keep pool minimal
+      connect_timeout: 5, // Fail fast: unreachable DB must throw, never hang the request
     });
     _db = drizzle(client, { schema });
     _cachedUrl = env.DATABASE_URL;
