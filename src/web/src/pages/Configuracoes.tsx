@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../hooks/useToast";
 
 interface Consent {
   category: string;
@@ -18,10 +19,12 @@ type Tab = "conta" | "seguranca" | "privacidade";
 
 export default function Configuracoes() {
   const user = useAuth((s) => s.user);
+  const toast = useToast((s) => s.toast);
   const [tab, setTab] = useState<Tab>("conta");
   const [consents, setConsents] = useState<Consent[]>([]);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteText, setDeleteText] = useState("");
 
   useEffect(() => {
     if (tab !== "privacidade") return;
@@ -53,9 +56,15 @@ export default function Configuracoes() {
   }
 
   async function exportData() {
-    setMsg("Preparando seu pacote LGPD…");
+    toast("Preparando seu pacote LGPD…", "info");
     try {
+      // fetch cru (não apiFetch) porque a resposta é um blob, não JSON
       const res = await fetch("/api/data/export", { credentials: "include" });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) throw new Error("export_failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -63,23 +72,25 @@ export default function Configuracoes() {
       a.download = "meus-dados-rjmais.zip";
       a.click();
       URL.revokeObjectURL(url);
-      setMsg("Download iniciado.");
+      toast("Download iniciado.", "success");
     } catch {
-      setMsg("Não foi possível exportar agora — tente novamente.");
+      toast("Não foi possível exportar agora — tente novamente.", "error", 5000);
     }
   }
 
   async function deleteAccount() {
-    const confirm1 = window.confirm(
-      "Tem certeza que quer excluir sua conta? Você terá 30 dias para cancelar."
-    );
-    if (!confirm1) return;
-    const confirm2 = window.prompt(
-      "Para confirmar, digite EXCLUIR (em maiúsculas):"
-    );
-    if (confirm2 !== "EXCLUIR") return;
-    await apiFetch("/data/delete", { method: "POST" });
-    setMsg("Sua conta foi marcada para exclusão. Email de confirmação enviado.");
+    try {
+      await apiFetch("/data/delete", { method: "POST" });
+      setConfirmingDelete(false);
+      setDeleteText("");
+      toast(
+        "Sua conta foi marcada para exclusão. Email de confirmação enviado — você tem 30 dias para cancelar.",
+        "success",
+        8000
+      );
+    } catch {
+      toast("Não foi possível processar agora — tente novamente.", "error", 5000);
+    }
   }
 
   if (!user) return null;
@@ -151,7 +162,7 @@ export default function Configuracoes() {
                   ? "border border-rj-green-dark text-rj-green-dark px-4 py-2 rounded-md"
                   : "bg-rj-gold text-rj-white px-4 py-2 rounded-md"
               }
-              onClick={() => alert("Fluxo 2FA em desenvolvimento — Fase 2.1")}
+              onClick={() => toast("Fluxo 2FA em desenvolvimento — Fase 2.1", "info")}
             >
               {user.has2fa ? "Desativar 2FA" : "Ativar 2FA"}
             </button>
@@ -159,7 +170,7 @@ export default function Configuracoes() {
           <hr className="border-rj-beige-accent" />
           <button
             type="button"
-            onClick={() => alert("Lista de sessões — Fase 2.1")}
+            onClick={() => toast("Lista de sessões — Fase 2.1", "info")}
             className="text-rj-gold underline text-sm"
           >
             Ver sessões ativas
@@ -198,13 +209,50 @@ export default function Configuracoes() {
             >
               Exportar todos os meus dados (.zip)
             </button>
-            <button
-              type="button"
-              onClick={deleteAccount}
-              className="block border border-red-700 text-red-700 px-4 py-2 rounded-md"
-            >
-              Excluir minha conta
-            </button>
+            {confirmingDelete ? (
+              <div className="border border-red-700/40 rounded-md p-4 space-y-3">
+                <p className="text-sm text-rj-black/80">
+                  Tem certeza que quer excluir sua conta? Você terá{" "}
+                  <strong>30 dias</strong> para cancelar. Para confirmar, digite{" "}
+                  <strong>EXCLUIR</strong>:
+                </p>
+                <input
+                  type="text"
+                  value={deleteText}
+                  onChange={(e) => setDeleteText(e.target.value)}
+                  aria-label="Digite EXCLUIR para confirmar"
+                  className="w-full rounded-md border border-rj-beige-accent px-3 py-2"
+                />
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    disabled={deleteText !== "EXCLUIR"}
+                    onClick={deleteAccount}
+                    className="bg-red-700 text-rj-white px-4 py-2 rounded-md disabled:opacity-40"
+                  >
+                    Confirmar exclusão
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmingDelete(false);
+                      setDeleteText("");
+                    }}
+                    className="border border-rj-green-dark text-rj-green-dark px-4 py-2 rounded-md"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="block border border-red-700 text-red-700 px-4 py-2 rounded-md"
+              >
+                Excluir minha conta
+              </button>
+            )}
             <a
               href="mailto:dpo@rjmais.com"
               className="block text-rj-gold underline"
@@ -212,12 +260,6 @@ export default function Configuracoes() {
               Falar com o DPO
             </a>
           </div>
-
-          {msg && (
-            <p role="status" className="text-sm text-rj-green-dark">
-              {msg}
-            </p>
-          )}
         </div>
       )}
     </section>

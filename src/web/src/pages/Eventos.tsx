@@ -1,3 +1,5 @@
+import EmbeddedFrame from "../components/EmbeddedFrame";
+
 export default function Eventos() {
   return (
     <section className="space-y-4">
@@ -10,12 +12,9 @@ export default function Eventos() {
         </p>
       </header>
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <iframe
+        <EmbeddedFrame
           src="https://calendariorjmais.pages.dev"
           title="Calendário RJ+ Experience"
-          className="w-full"
-          style={{ height: "min(80dvh, 800px)", border: 0 }}
-          loading="lazy"
         />
       </div>
       <p className="text-xs text-rj-black/60">
