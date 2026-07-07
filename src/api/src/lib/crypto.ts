@@ -222,3 +222,80 @@ export async function hashToken(token: string): Promise<string> {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
+
+/**
+ * HMAC-SHA256 hex de uma mensagem com um segredo (chave raw UTF-8).
+ * Usado para assinar/verificar payloads de webhook.
+ */
+export async function hmacSha256Hex(
+  secret: string,
+  message: string
+): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, enc.encode(message))
+  );
+  return Array.from(sig)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * Verifica assinatura HMAC-SHA256 de webhook em tempo constante.
+ * Header esperado no formato "sha256=<hex>" (ou só o hex).
+ * Retorna false se segredo/header ausentes ou assinatura inválida.
+ */
+export async function verifyWebhookSignature(
+  secret: string,
+  rawBody: string,
+  header: string | null | undefined
+): Promise<boolean> {
+  if (!secret || !header) return false;
+  const provided = (header.startsWith("sha256=") ? header.slice(7) : header)
+    .trim()
+    .toLowerCase();
+  const expected = await hmacSha256Hex(secret, rawBody);
+  return timingSafeEqual(expected, provided);
+}
+
+/** Decodifica chave AES (TOTP_ENC_KEY) — base64 de 32 bytes → Uint8Array. */
+function decodeAesKey(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/**
+ * Criptografa segredo TOTP em repouso.
+ * Sem chave (`key` ausente) → retorna plaintext (rollout faseado / compat legado).
+ * Com chave → AES-256-GCM, formato "iv:ciphertext" (contém ':').
+ */
+export async function encryptTotpSecret(
+  secret: string,
+  key?: string
+): Promise<string> {
+  if (!key) return secret;
+  return encryptAES256GCM(secret, decodeAesKey(key));
+}
+
+/**
+ * Descriptografa segredo TOTP.
+ * Detecta formato: valor com ':' é criptografado (exige chave);
+ * senão é base32 legado em texto puro e é retornado como está.
+ */
+export async function decryptTotpSecret(
+  stored: string,
+  key?: string
+): Promise<string> {
+  if (!stored.includes(":")) return stored; // base32 legado (plaintext)
+  if (!key) throw new Error("TOTP_ENC_KEY ausente para segredo criptografado");
+  return decryptAES256GCM(stored, decodeAesKey(key));
+}
