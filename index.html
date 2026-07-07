@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BB's Box — Painel da Automação</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #181b25; --card2: #1f2330; --text: #e8eaf2;
+    --muted: #9aa1b5; --green: #34d399; --red: #f87171; --amber: #fbbf24;
+    --accent: #a78bfa; --border: #2a2f40;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  h1 { font-size: 1.5rem; } h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .card .label { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+  .card .value { font-size: 1.35rem; font-weight: 700; margin-top: 6px; }
+  .card .hint { color: var(--muted); font-size: .78rem; margin-top: 6px; }
+  .ok { color: var(--green); } .fail { color: var(--red); } .warn { color: var(--amber); }
+  h2 { font-size: 1.05rem; margin: 28px 0 12px; color: var(--accent); }
+  .run { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+  .badge { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .b-ok { background: rgba(52,211,153,.15); color: var(--green); }
+  .b-fail { background: rgba(248,113,113,.15); color: var(--red); }
+  .b-run { background: rgba(251,191,36,.15); color: var(--amber); }
+  .run .meta { color: var(--muted); font-size: .8rem; }
+  .run a { color: var(--accent); font-size: .8rem; text-decoration: none; margin-left: auto; }
+  .run a:hover { text-decoration: underline; }
+  button { background: var(--accent); color: #14091f; font-weight: 700; border: 0; border-radius: 10px; padding: 10px 18px; font-size: .9rem; cursor: pointer; }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .ghost { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
+  input { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: .85rem; width: 100%; }
+  .tokenbox { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+  .tokenbox p { color: var(--muted); font-size: .8rem; margin: 8px 0; line-height: 1.5; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row input { flex: 1; min-width: 220px; }
+  .report { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+  .report summary { padding: 12px 14px; cursor: pointer; font-size: .9rem; }
+  .report .md { padding: 0 16px 16px; color: var(--muted); font-size: .85rem; line-height: 1.6; }
+  .md h3, .md h4 { color: var(--text); margin: 14px 0 6px; }
+  .md ul { margin: 6px 0 6px 20px; }
+  .md code { background: var(--card2); padding: 1px 6px; border-radius: 6px; }
+  .md a { color: var(--accent); }
+  .msg { font-size: .85rem; margin-top: 10px; min-height: 1.2em; }
+  .alert { border: 1px solid rgba(248,113,113,.4); background: rgba(248,113,113,.08); border-radius: 12px; padding: 14px 16px; font-size: .85rem; line-height: 1.55; margin-bottom: 24px; display: none; }
+  .alert strong { color: var(--red); }
+  footer { color: var(--muted); font-size: .75rem; margin-top: 40px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>BB's Box <span>· Painel da Automação</span></h1>
+      <div class="sub">Rotina de growth orgânico — roda 09:00 e 21:00 (Brasília) via GitHub Actions</div>
+    </div>
+    <div class="row">
+      <button id="btnRun">▶ Rodar agora</button>
+      <button id="btnRefresh" class="ghost">↻ Atualizar</button>
+    </div>
+  </header>
+
+  <div id="alert" class="alert"></div>
+  <div class="msg" id="runMsg" style="margin:-12px 0 16px"></div>
+
+  <div class="cards">
+    <div class="card"><div class="label">Última execução</div><div class="value" id="cLast">—</div><div class="hint" id="cLastWhen"></div></div>
+    <div class="card"><div class="label">Taxa de sucesso (últ. 20)</div><div class="value" id="cRate">—</div><div class="hint" id="cRateHint"></div></div>
+    <div class="card"><div class="label">Próxima execução</div><div class="value" id="cNext">—</div><div class="hint">agendamento automático</div></div>
+    <div class="card"><div class="label">Relatórios gerados</div><div class="value" id="cReports">—</div><div class="hint">em outputs/reports/</div></div>
+  </div>
+
+  <h2>Execuções recentes</h2>
+  <div id="runs">Carregando…</div>
+
+  <h2>Relatórios da rotina</h2>
+  <div id="reports">Carregando…</div>
+
+  <footer>RJ+ / The BB's Box — atualiza sozinho a cada 60s · dados via API pública do GitHub</footer>
+</div>
+
+<script>
+const OWNER = 'pilarmoret', REPO = 'bbsbox', WF = 'growth-routine.yml';
+const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
+const $ = id => document.getElementById(id);
+
+function headers() {
+  return { 'Accept': 'application/vnd.github+json' };
+}
+const fmt = iso => new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(iso));
+
+function nextRun() {
+  const now = new Date();
+  const tz = 'America/Sao_Paulo';
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false }).formatToParts(now);
+  const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  if (hour < 9) return '09:00 de hoje';
+  if (hour < 21) return '21:00 de hoje';
+  return '09:00 de amanhã';
+}
+
+async function gh(path) {
+  const r = await fetch(API + path, { headers: headers() });
+  if (r.status === 403) throw new Error('rate');
+  if (!r.ok) throw new Error('http' + r.status);
+  return r.json();
+}
+
+async function loadRuns() {
+  try {
+    const d = await gh(`/actions/workflows/${WF}/runs?per_page=20`);
+    const runs = d.workflow_runs || [];
+    const el = $('runs');
+    if (!runs.length) { el.textContent = 'Nenhuma execução ainda.'; return; }
+
+    const last = runs[0];
+    const okLast = last.conclusion === 'success';
+    $('cLast').textContent = last.status !== 'completed' ? 'rodando…' : (okLast ? 'Sucesso' : 'Falhou');
+    $('cLast').className = 'value ' + (last.status !== 'completed' ? 'warn' : (okLast ? 'ok' : 'fail'));
+    $('cLastWhen').textContent = fmt(last.created_at) + (last.event === 'schedule' ? ' · agendada' : ' · manual');
+
+    const done = runs.filter(r => r.status === 'completed');
+    const okN = done.filter(r => r.conclusion === 'success').length;
+    const rate = done.length ? Math.round(100 * okN / done.length) : 0;
+    $('cRate').textContent = rate + '%';
+    $('cRate').className = 'value ' + (rate >= 80 ? 'ok' : rate >= 50 ? 'warn' : 'fail');
+    $('cRateHint').textContent = `${okN} de ${done.length} concluídas com sucesso`;
+    $('cNext').textContent = nextRun();
+
+    const recentFails = done.slice(0, 2).filter(r => r.conclusion === 'failure');
+    const alertEl = $('alert');
+    if (recentFails.length === Math.min(2, done.length) && recentFails.length > 0) {
+      alertEl.style.display = 'block';
+      alertEl.innerHTML = '<strong>⚠ As execuções mais recentes falharam.</strong> Causa mais comum: créditos da API Anthropic esgotados — verifique em <a href="https://console.anthropic.com/settings/billing" target="_blank" style="color:var(--accent)">console.anthropic.com → Billing</a>. Detalhes no log da execução abaixo.';
+    } else { alertEl.style.display = 'none'; }
+
+    el.innerHTML = runs.map(r => {
+      const b = r.status !== 'completed' ? '<span class="badge b-run">rodando</span>'
+        : r.conclusion === 'success' ? '<span class="badge b-ok">sucesso</span>'
+        : '<span class="badge b-fail">falhou</span>';
+      const dur = r.updated_at && r.status === 'completed' ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000) + 's' : '';
+      const ev = r.event === 'schedule' ? 'agendada' : 'manual';
+      return `<div class="run">${b}<b>#${r.run_number}</b><span class="meta">${fmt(r.created_at)} · ${ev} ${dur ? '· ' + dur : ''}</span><a href="${r.html_url}" target="_blank">ver log ↗</a></div>`;
+    }).join('');
+  } catch (e) {
+    $('runs').textContent = e.message === 'rate'
+      ? 'Limite da API do GitHub atingido — salve um token acima para aumentar o limite, ou aguarde alguns minutos.'
+      : 'Erro ao carregar execuções (' + e.message + ').';
+  }
+}
+
+function md(s) {
+  s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  s = s.replace(/^### (.*)$/gm, '<h4>$1</h4>').replace(/^## (.*)$/gm, '<h3>$1</h3>').replace(/^# (.*)$/gm, '<h3>$1</h3>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  s = s.replace(/^[-*] (.*)$/gm, '<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g, m => '<ul>' + m + '</ul>');
+  return s.split(/\n{2,}/).map(p => p.startsWith('<') ? p : '<p>' + p + '</p>').join('');
+}
+
+async function loadReports() {
+  const el = $('reports');
+  try {
+    const files = await gh('/contents/outputs/reports');
+    const mds = files.filter(f => f.name.endsWith('.md')).sort((a, b) => b.name.localeCompare(a.name)).slice(0, 10);
+    $('cReports').textContent = mds.length;
+    if (!mds.length) { el.textContent = 'Nenhum relatório ainda.'; return; }
+    el.innerHTML = mds.map(f => `<details class="report" data-url="${f.download_url}"><summary>📄 ${f.name}</summary><div class="md">carregando…</div></details>`).join('');
+    el.querySelectorAll('details').forEach(d => d.addEventListener('toggle', async () => {
+      if (d.open && !d.dataset.loaded) {
+        d.dataset.loaded = '1';
+        const t = await (await fetch(d.dataset.url)).text();
+        d.querySelector('.md').innerHTML = md(t);
+      }
+    }));
+  } catch (e) {
+    $('cReports').textContent = '0';
+    el.textContent = e.message === 'http404'
+      ? 'Nenhum relatório gerado ainda — a pasta outputs/reports/ será criada pela rotina.'
+      : 'Erro ao carregar relatórios.';
+  }
+}
+
+$('btnRun').addEventListener('click', () => {
+  const msg = $('runMsg');
+  window.open(`https://github.com/${OWNER}/${REPO}/actions/workflows/${WF}`, '_blank');
+  msg.textContent = 'ℹ Na página que abriu, clique em "Run workflow" → "Run workflow". O resultado aparece aqui em ~30s.';
+  msg.className = 'msg warn';
+  setTimeout(loadRuns, 30000);
+});
+
+$('btnRefresh').addEventListener('click', () => { loadRuns(); loadReports(); });
+
+loadRuns(); loadReports();
+setInterval(loadRuns, 60000);
+</script>
+</body>
+</html>

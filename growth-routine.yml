@@ -1,0 +1,46 @@
+name: BB's Box organic growth routine
+
+# Roda a rotina de growth orgânico da The BB's Box 2x por dia.
+# SETUP NECESSÁRIO (uma vez): ver README.md
+on:
+  schedule:
+    - cron: '0 12 * * *'   # 09:00 America/Sao_Paulo
+    - cron: '0 0 * * *'    # 21:00 America/Sao_Paulo
+  workflow_dispatch: {}
+
+jobs:
+  growth-routine:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Claude growth routine
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          claude_args: |
+            --allowedTools "Read,Write,Edit,Glob,Grep,TodoWrite,WebFetch,WebSearch,Bash(git:*),Bash(mkdir:*),Bash(date:*),Bash(ls:*),Bash(cat:*)"
+          prompt: |
+            Você é o operador de e-commerce e growth orgânico da The BB's Box (thebbsbox.com).
+            Execute a rotina definida em outputs/social-engagement-2026-06-09/captions.md e nas
+            regras abaixo, e grave o relatório em outputs/reports/<data>-<hora>.md.
+            IMPORTANTE: ao final, faça commit e push do relatório para a branch main
+            (git add outputs/reports && git commit && git push).
+
+            CONSTRAINTS INEGOCIÁVEIS:
+            - Proibido criar/ativar anúncios pagos, upgrades ou ferramentas pagas.
+            - Não alterar preços, estoque, frete, políticas ou segmentos de email.
+            - Nunca apagar produtos, coleções ou posts; apenas enriquecer.
+            - Campanhas de email: apenas rascunhos, respeitando segmentação por país/idioma.
+
+            ROTINA: 1) diagnóstico rápido; 2) conteúdo TikTok/Instagram complementar à Minta;
+            3) blog Shopify + SEO de 3-5 produtos; 4) update no Google Business Profile;
+            5) status do Manychat; 6) relatório final no formato padrão.
+
+            LINKS RASTREÁVEIS (usar sempre): Instagram/TikTok https://bit.ly/43qQJXX |
+            Facebook https://bit.ly/4uowANi | Google Business Profile https://bit.ly/4us3tbR
