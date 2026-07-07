@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { LogOut, Menu, X } from "lucide-react";
 import clsx from "clsx";
+import { useAuth } from "../hooks/useAuth";
 
 const NAV = [
   { to: "/dashboard", label: "Início" },
@@ -15,6 +16,15 @@ const NAV = [
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const user = useAuth((s) => s.user);
+  const logout = useAuth((s) => s.logout);
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    setOpen(false);
+    await logout();
+    navigate("/login");
+  }
 
   return (
     <header className="bg-rj-green-dark text-rj-white">
@@ -47,6 +57,16 @@ export default function Header() {
               {item.label}
             </NavLink>
           ))}
+          {user && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-sm text-rj-white/85 hover:text-rj-gold transition-colors"
+            >
+              <LogOut size={16} aria-hidden="true" />
+              Sair
+            </button>
+          )}
         </nav>
 
         <button
@@ -84,6 +104,18 @@ export default function Header() {
                 </NavLink>
               </li>
             ))}
+            {user && (
+              <li>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 py-2 text-base text-rj-white"
+                >
+                  <LogOut size={18} aria-hidden="true" />
+                  Sair
+                </button>
+              </li>
+            )}
           </ul>
         </nav>
       )}

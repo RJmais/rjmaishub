@@ -3,7 +3,8 @@
  * NÃO alterar sem aprovação.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Verdana&display=swap");
+/* Verdana é fonte de sistema — não existe no Google Fonts; nada a importar.
+ * "Fahwang" (grafia da casa) = Fahkwang; woff2 latinos servidos localmente. */
 
 @font-face {
   font-family: "Fahwang";

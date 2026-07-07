@@ -11,6 +11,7 @@ import { referrals } from "./routes/referrals";
 import { events } from "./routes/events";
 import { webhooks } from "./routes/webhooks";
 import { leads } from "./routes/leads";
+import { painel } from "./routes/painel";
 import { retentionSweep } from "./cron/retention";
 
 export interface Env {
@@ -30,6 +31,12 @@ export interface Env {
   TURNSTILE_SECRET: string;
   RESEND_API_KEY?: string;
   HUBSPOT_TOKEN?: string;
+  /** HMAC compartilhado com os chatbots Ana/Sofia p/ assinar webhooks de lead (H1). */
+  WEBHOOK_SECRET?: string;
+  /** Chave AES-256 (base64 de 32 bytes) p/ criptografar segredos TOTP em repouso (H2). */
+  TOTP_ENC_KEY?: string;
+  /** Bearer token do Painel de TI (painel-ti-rjmais) — consumido só server-side. */
+  PAINEL_TOKEN?: string;
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -68,6 +75,7 @@ app.route("/data", data);
 app.route("/dpo", dpo);
 app.route("/referrals", referrals);
 app.route("/events", events);
+app.route("/painel", painel); // Painel de TI (Bearer PAINEL_TOKEN)
 
 app.notFound((c) => c.json({ error: "not_found", path: c.req.path }, 404));
 

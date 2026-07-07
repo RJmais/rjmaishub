@@ -5,6 +5,8 @@ import Footer from "./components/Footer";
 import AppShell from "./components/AppShell";
 import Loading from "./components/Loading";
 import DemoBanner from "./components/DemoBanner";
+import Toaster from "./components/Toaster";
+import { useToast } from "./hooks/useToast";
 
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -119,8 +121,16 @@ export default function App() {
         </Suspense>
       </main>
       <Footer />
+      <GlobalToaster />
     </div>
   );
+}
+
+/* Componente separado para que novos toasts não re-renderizem a árvore inteira. */
+function GlobalToaster() {
+  const toasts = useToast((s) => s.toasts);
+  const remove = useToast((s) => s.remove);
+  return <Toaster toasts={toasts} onRemove={remove} />;
 }
 
 function NotFound() {

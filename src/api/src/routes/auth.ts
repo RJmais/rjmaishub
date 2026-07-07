@@ -10,6 +10,8 @@ import {
   verifyPassword,
   randomToken,
   hashToken,
+  encryptTotpSecret,
+  decryptTotpSecret,
 } from "../lib/crypto";
 import {
   createSession,
@@ -336,6 +338,9 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
   .post("/login/2fa", zValidator("json", login2faSchema), async (c) => {
     const ip = clientIp(c);
     const ua = c.req.header("User-Agent") ?? "";
+    // H3 — limite por IP na rota de verificação 2FA (além do throttle por tempToken abaixo)
+    const okIp = await rateLimit(c, `login2fa:${ip}`, 10, 60);
+    if (!okIp) return c.json({ error: "rate_limited" }, 429);
     const body = c.req.valid("json");
     const stored = await c.env.SESSIONS.get(`2fa:${body.tempToken}`);
     if (!stored) return c.json({ error: "invalid_token" }, 401);
@@ -374,7 +379,8 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
 
     let valid = false;
     if (/^\d{6}$/.test(body.code)) {
-      valid = await verifyTotpCode(user.totpSecret, body.code);
+      const totpSecret = await decryptTotpSecret(user.totpSecret, c.env.TOTP_ENC_KEY);
+      valid = await verifyTotpCode(totpSecret, body.code);
     } else {
       // backup code
       const codeHash = await hashBackupCode(body.code);
@@ -399,6 +405,23 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
     }
 
     if (!valid) {
+      // H3 — throttle por tempToken: 5 tentativas erradas queimam o token
+      const attemptsKey = `2fa-att:${body.tempToken}`;
+      const attempts = Number((await c.env.SESSIONS.get(attemptsKey)) ?? "0") + 1;
+      if (attempts >= 5) {
+        await c.env.SESSIONS.delete(`2fa:${body.tempToken}`);
+        await c.env.SESSIONS.delete(attemptsKey);
+        await logAudit(c.env, {
+          userId: user.id,
+          action: "auth.2fa.locked_out",
+          ip,
+          userAgent: ua,
+        });
+        return c.json({ error: "too_many_attempts" }, 429);
+      }
+      await c.env.SESSIONS.put(attemptsKey, String(attempts), {
+        expirationTtl: 300,
+      });
       await logAudit(c.env, {
         userId: user.id,
         action: "auth.2fa.failure",
@@ -409,6 +432,7 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
     }
 
     await c.env.SESSIONS.delete(`2fa:${body.tempToken}`);
+    await c.env.SESSIONS.delete(`2fa-att:${body.tempToken}`);
     const sessionId = await createSession(c.env, user.id, user.email, user.tier, ip, ua);
     await logAudit(c.env, { userId: user.id, action: "auth.login.2fa_success", ip, userAgent: ua });
 
@@ -531,8 +555,12 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
   .post("/2fa/enable", requireAuth, zValidator("json", enable2faSchema), async (c) => {
     const user = c.var.user;
     const secret = generateTotpSecret();
-    // Armazena secret pendente em KV (5 min) — só ativa após confirm
-    await c.env.SESSIONS.put(`2fa-pending:${user.id}`, secret, { expirationTtl: 300 });
+    // Armazena secret pendente em KV (5 min), criptografado se TOTP_ENC_KEY existir — só ativa após confirm
+    await c.env.SESSIONS.put(
+      `2fa-pending:${user.id}`,
+      await encryptTotpSecret(secret, c.env.TOTP_ENC_KEY),
+      { expirationTtl: 300 }
+    );
     const uri = buildTotpUri(secret, user.email);
     return c.json({ secret, otpauthUri: uri });
   })
@@ -540,8 +568,9 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
   /* ─────── POST /2fa/confirm ─────── */
   .post("/2fa/confirm", requireAuth, zValidator("json", confirm2faSchema), async (c) => {
     const user = c.var.user;
-    const secret = await c.env.SESSIONS.get(`2fa-pending:${user.id}`);
-    if (!secret) return c.json({ error: "no_pending_setup" }, 400);
+    const storedPending = await c.env.SESSIONS.get(`2fa-pending:${user.id}`);
+    if (!storedPending) return c.json({ error: "no_pending_setup" }, 400);
+    const secret = await decryptTotpSecret(storedPending, c.env.TOTP_ENC_KEY);
     const body = c.req.valid("json");
     const ok = await verifyTotpCode(secret, body.code);
     if (!ok) return c.json({ error: "invalid_code" }, 401);
@@ -550,7 +579,10 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
     const db = getDb(c.env);
     await db
       .update(users)
-      .set({ totpSecret: secret, updatedAt: now })
+      .set({
+        totpSecret: await encryptTotpSecret(secret, c.env.TOTP_ENC_KEY),
+        updatedAt: now,
+      })
       .where(eq(users.id, user.id));
     await c.env.SESSIONS.delete(`2fa-pending:${user.id}`);
 
@@ -584,7 +616,8 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
     if (!u || !u.totpSecret) return c.json({ error: "no_2fa" }, 400);
 
     const passOk = await verifyPassword(body.password, u.passwordHash ?? "");
-    const codeOk = await verifyTotpCode(u.totpSecret, body.code);
+    const totpSecret = await decryptTotpSecret(u.totpSecret, c.env.TOTP_ENC_KEY);
+    const codeOk = await verifyTotpCode(totpSecret, body.code);
     if (!passOk || !codeOk) return c.json({ error: "invalid" }, 401);
 
     await db.transaction(async (tx) => {
