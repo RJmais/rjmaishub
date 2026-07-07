@@ -1,4 +1,4 @@
-import { pgTable, text, bigint, integer, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, bigint, integer, unique, jsonb } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -136,4 +136,20 @@ export const leads = pgTable('leads', {
   hubspotSyncedAt: bigint('hubspot_synced_at', { mode: 'number' }),
   createdAt:       bigint('created_at',        { mode: 'number' }).notNull(),
   updatedAt:       bigint('updated_at',        { mode: 'number' }).notNull(),
+});
+
+/** Painel de TI — histórico persistente de incidentes (com busca). */
+export const painelIncidentes = pgTable('painel_incidentes', {
+  id:           text('id').primaryKey(),                              // ex.: INC-042
+  titulo:       text('titulo').notNull(),
+  severidade:   text('severidade').notNull(),                         // critico | alto | medio | baixo
+  estado:       text('estado').notNull().default('aberto'),           // aberto | em_andamento | resolvido
+  sistema:      text('sistema').notNull(),
+  responsavel:  text('responsavel').notNull(),
+  impacto:      text('impacto').notNull(),
+  linhaDoTempo: jsonb('linha_do_tempo').$type<{ hora: string; evento: string }[]>().notNull().default([]),
+  abertoEm:     bigint('aberto_em',    { mode: 'number' }).notNull(), // epoch ms
+  resolvidoEm:  bigint('resolvido_em', { mode: 'number' }),
+  criadoEm:     bigint('criado_em',    { mode: 'number' }).notNull(),
+  atualizadoEm: bigint('atualizado_em', { mode: 'number' }).notNull(),
 });
