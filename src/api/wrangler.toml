@@ -41,3 +41,5 @@ crons = ["0 6 * * *"]   # 06:00 UTC = 03:00 GMT-3 — sweep de retenção LGPD d
 # - TURNSTILE_SECRET
 # - RESEND_API_KEY
 # - HUBSPOT_TOKEN
+# - WEBHOOK_SECRET           (HMAC compartilhado com chatbots Ana/Sofia — H1; assinam com X-RJ-Signature: sha256=<hex>)
+# - TOTP_ENC_KEY             (AES-256 base64 de 32 bytes p/ criptografar segredo TOTP em repouso — H2; gerar: openssl rand -base64 32)

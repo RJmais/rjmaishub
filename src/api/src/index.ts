@@ -30,6 +30,10 @@ export interface Env {
   TURNSTILE_SECRET: string;
   RESEND_API_KEY?: string;
   HUBSPOT_TOKEN?: string;
+  /** HMAC compartilhado com os chatbots Ana/Sofia p/ assinar webhooks de lead (H1). */
+  WEBHOOK_SECRET?: string;
+  /** Chave AES-256 (base64 de 32 bytes) p/ criptografar segredos TOTP em repouso (H2). */
+  TOTP_ENC_KEY?: string;
 }
 
 const app = new Hono<{ Bindings: Env }>();

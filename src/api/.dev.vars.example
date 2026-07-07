@@ -4,3 +4,7 @@ BETTER_AUTH_SECRET=run-openssl-rand-base64-32
 TURNSTILE_SECRET=0x4xxxx
 RESEND_API_KEY=re_xxxx
 HUBSPOT_TOKEN=pat-na1-xxxx
+# HMAC compartilhado com os chatbots Ana/Sofia (H1). Deixe vazio em dev p/ aceitar não-assinado.
+WEBHOOK_SECRET=
+# AES-256 base64 de 32 bytes p/ criptografar segredo TOTP (H2). Gerar: openssl rand -base64 32
+TOTP_ENC_KEY=
