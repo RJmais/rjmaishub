@@ -39,7 +39,16 @@
 .rjasset-hero__panel span { border-bottom-color: rgba(199, 199, 199, 0.28); }
 
 /* 4. Botoes: dourado -> branco solido / contorno prata (padrao Gamma) */
-.rjasset-button--primary { background: #ffffff; color: #000000; }
+/* seletor com .rjasset-body para vencer ".rjasset-body a { color: inherit }" */
+.rjasset-button--primary,
+.rjasset-body a.rjasset-button--primary {
+    background: #ffffff;
+    color: #000000;
+}
+.rjasset-body a.rjasset-button--primary:hover {
+    background: #e0e0e0;
+    color: #000000;
+}
 .rjasset-button--secondary { border-color: rgba(199, 199, 199, 0.8); }
 
 /* 5. Secoes equivalentes ao Gamma (por ID — sem tocar em templates)
