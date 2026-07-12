@@ -4,16 +4,18 @@
 
 ## Status
 
-⚠️ **Aplicação no WordPress PENDENTE — bloqueio de rede do ambiente.**
-A política de rede desta sessão remota bloqueia todo acesso HTTP externo
-(gateway responde 403 para `rjasset.com.br` e `gamma.app`; apenas MCP servers
-funcionam). O conteúdo do Gamma foi extraído via MCP oficial do Gamma, mas o
-wp-admin não pôde ser acessado. **Nenhuma alteração foi feita no site.**
+✅ **APLICADO em produção em 12/07/2026** via mecanismo nativo do WordPress
+(Customizer → CSS adicional, publicado no tema `rjasset-institutional`).
+O arquivo `wordpress-additional-css.css` deste diretório é o CSS exato que
+está no ar. Validado: estrutura, menus, links e conteúdo 100% intactos
+(diff de tags e hrefs antes/depois idêntico); CSS emitido em
+`<style id="wp-custom-css">` em todas as páginas.
 
-Para destravar: liberar `rjasset.com.br` (e opcionalmente `gamma.app`) na
-política de rede do ambiente Claude Code (Settings → Environment → Network),
-ou rodar a missão de um ambiente com rede aberta. A senha do wp-admin já está
-disponível na variável de ambiente da sessão.
+Site inspecionado: WordPress 7.0.1, tema custom `rjasset-institutional`
+v0.1.0 (variáveis CSS em `:root` — mecanismo ideal para re-skin sem tocar em
+templates), fontes Fahkwang + Verdana, plugins cookieadmin/formlayer,
+ModSecurity ativo no servidor. O CSS adicional estava vazio antes da
+aplicação (nada foi sobrescrito).
 
 ## 1. Branding encontrado no Gamma
 

@@ -1,5 +1,12 @@
 # Checklist de aplicação no wp-admin (rjasset.com.br)
 
+> **12/07/2026 — itens 2, 4, 5 (cores) e 7 EXECUTADOS** via Customizer →
+> CSS adicional (publicado e validado). Pendências manuais restantes:
+> favicon (site não tem nenhum — item 1), re-hospedar a imagem do hero do
+> CDN do Gamma na Biblioteca de Mídia (item 5, hoje via hotlink com
+> fallback de gradiente) e confirmar fontes do tema no editor do Gamma
+> (item 3 — mantidas Fahkwang/Verdana, que o site já usa).
+
 *Ordem segue as prioridades da missão. Regra de ouro: só cores/tipografia/
 imagens — nunca mover blocos, alterar menus, links, conteúdo ou estrutura.*
 

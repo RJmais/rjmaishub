@@ -1,100 +1,90 @@
-/* ============================================================
-   RJ+ Asset — Branding global (fonte: Gamma "RJ+ Asset")
-   Colar em: wp-admin → Aparência → Personalizar → CSS adicional
-   Escopo: SOMENTE cores, tipografia, botões e links.
-   Não altera layout, espaçamento estrutural, menus ou conteúdo.
-   Aplicar por seções (1→6) validando o site a cada etapa.
-   ============================================================ */
+/* ==========================================================================
+   RJ+ Asset — Sincronizacao visual com o Gamma (12/07/2026)
+   Fonte: gamma.app/docs/RJ-Asset-mwj00jvbrlzu0l1 (tema dark charcoal/prata)
+   Escopo: somente cores/acabamento. Estrutura, conteudo, menus e links intactos.
+   ========================================================================== */
 
-/* 1. Tokens da identidade (Gamma: preto/charcoal/prata/chrome) */
+/* 1. Paleta global: verde/dourado/bege -> preto/prata/cinza do Gamma */
 :root {
-  --rja-black: #000000;      /* fundo de seções escuras (exato do Gamma) */
-  --rja-graphite: #141414;   /* surfaces/cards sobre preto */
-  --rja-charcoal: #2b2b2b;   /* bordas, hovers, secundários */
-  --rja-gray: #cccccc;       /* fundo de seções claras (exato do Gamma) */
-  --rja-silver: #c7c7c7;     /* texto secundário sobre escuro */
-  --rja-offwhite: #f5f5f5;   /* fundo claro alternativo */
-  --rja-white: #ffffff;
-  --rja-chrome-gradient: linear-gradient(135deg, #0b0b0b 0%, #3c3c3c 55%, #6e6e6e 100%);
-  /* Fonte provisória até confirmar a família do tema Gamma */
-  --rja-font-heading: "Inter", "Helvetica Neue", Arial, sans-serif;
-  --rja-font-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+    --rjasset-forest: #000000;
+    --rjasset-moss: #2b2b2b;
+    --rjasset-paper: #cccccc;
+    --rjasset-paper-soft: #f5f5f5;
+    --rjasset-accent: #c7c7c7;
+    --rjasset-gold: #c7c7c7;
+    --rjasset-ink: #141414;
+    --rjasset-border: rgba(20, 20, 20, 0.18);
 }
 
-/* 2. Tipografia global (mapeia para as variáveis acima) */
-body {
-  font-family: var(--rja-font-body);
-  color: var(--rja-graphite);
+/* 2. Header e rodape (tons beges/verdes hardcoded -> preto/prata) */
+.rjasset-header {
+    background: rgba(0, 0, 0, 0.96);
+    border-bottom-color: rgba(199, 199, 199, 0.28);
 }
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--rja-font-heading);
-  color: inherit; /* respeita seções escuras/claras existentes */
-  letter-spacing: -0.01em;
-}
+.rjasset-header__cta { border-color: rgba(199, 199, 199, 0.7); }
+.rjasset-footer { border-top-color: rgba(199, 199, 199, 0.28); }
 
-/* 3. Links (fora de menus — menus não devem ser alterados) */
-.entry-content a:not(.wp-block-button__link):not(.elementor-button),
-.site-content a:not(.wp-block-button__link):not(.elementor-button) {
-  color: var(--rja-charcoal);
-  text-decoration-color: var(--rja-silver);
+/* 3. Hero: imagem do Gamma atras + gradiente escuro (degrada p/ gradiente puro) */
+.rjasset-hero {
+    background:
+        linear-gradient(120deg, rgba(0, 0, 0, 0.86), rgba(18, 18, 18, 0.72)),
+        url('https://cdn.gamma.app/b0rzn1gw3i2hdft/generated-images/jdECTpNw_HMU6ScuXgcYy.png') center / cover no-repeat,
+        #000000;
 }
-.entry-content a:hover,
-.site-content a:hover { color: var(--rja-black); }
+.rjasset-hero__subtitle { color: #e0e0e0; }
+.rjasset-hero__panel {
+    border-color: rgba(199, 199, 199, 0.45);
+    background: rgba(255, 255, 255, 0.05);
+}
+.rjasset-hero__panel span { border-bottom-color: rgba(199, 199, 199, 0.28); }
 
-/* 4. Botões — primário sólido (padrão Gamma: sólido sobre a página) */
-.wp-block-button__link,
-.wp-element-button,
-.elementor-button,
-button[type="submit"],
-input[type="submit"] {
-  background-color: var(--rja-black);
-  color: var(--rja-white);
-  border: 1px solid var(--rja-black);
-  border-radius: 6px; /* ajustar ao raio atual do tema se diferente */
-}
-.wp-block-button__link:hover,
-.wp-element-button:hover,
-.elementor-button:hover,
-button[type="submit"]:hover,
-input[type="submit"]:hover {
-  background-color: var(--rja-charcoal);
-  border-color: var(--rja-charcoal);
-  color: var(--rja-white);
-}
+/* 4. Botoes: dourado -> branco solido / contorno prata (padrao Gamma) */
+.rjasset-button--primary { background: #ffffff; color: #000000; }
+.rjasset-button--secondary { border-color: rgba(199, 199, 199, 0.8); }
 
-/* 4b. Botão variante outline (equivalente ao "variant=outline" do Gamma) */
-.is-style-outline .wp-block-button__link,
-.rja-btn-outline {
-  background: transparent;
-  color: var(--rja-black);
-  border: 1px solid var(--rja-black);
+/* 5. Secoes equivalentes ao Gamma (por ID — sem tocar em templates)
+      Gamma: Quem Somos = #000, Politicas = #000, Gestora independente = #CCC */
+#quem-somos.rjasset-section--paper,
+#politicas-da-gestora.rjasset-section--paper {
+    background: #000000;
+    color: #ffffff;
 }
-.is-style-outline .wp-block-button__link:hover,
-.rja-btn-outline:hover {
-  background: var(--rja-black);
-  color: var(--rja-white);
-}
+#gestora-independente.rjasset-section { background: #cccccc; }
 
-/* 5. Classes utilitárias para harmonizar seções existentes
-   (aplicar como "classe CSS adicional" no bloco/section — sem mover nada) */
-.rja-section-dark {
-  background-color: var(--rja-black);
-  color: var(--rja-white);
+/* Cards estilo "outline boxes" do Gamma nas secoes pretas */
+#quem-somos .rjasset-card,
+#politicas-da-gestora .rjasset-policy-card {
+    background: transparent;
+    border-color: rgba(199, 199, 199, 0.4);
 }
-.rja-section-dark a { color: var(--rja-silver); }
-.rja-section-light {
-  background-color: var(--rja-gray);
-  color: var(--rja-graphite);
-}
-.rja-card-outline { /* cards estilo "outline boxes" do Quem Somos */
-  background: transparent;
-  border: 1px solid var(--rja-charcoal);
-  border-radius: 8px;
-}
-.rja-section-dark .rja-card-outline { border-color: var(--rja-silver); }
-.rja-chrome { background: var(--rja-chrome-gradient); color: var(--rja-white); }
+#quem-somos .rjasset-note,
+#quem-somos .rjasset-disclaimer,
+#politicas-da-gestora .rjasset-note,
+#politicas-da-gestora .rjasset-disclaimer { color: rgba(255, 255, 255, 0.72); }
+#politicas-da-gestora .rjasset-link,
+#quem-somos .rjasset-link { color: #e0e0e0; }
 
-/* 6. Detalhes finos */
-hr, .wp-block-separator { border-color: var(--rja-gray); background: var(--rja-gray); }
-blockquote, .wp-block-quote { border-left: 3px solid var(--rja-charcoal); color: var(--rja-charcoal); }
-::selection { background: var(--rja-black); color: var(--rja-white); }
+/* 6. Acentos e contrastes finos */
+.rjasset-eyebrow,
+.rjasset-policy-card__category,
+.rjasset-contact__label { color: #5c5c5c; }
+.rjasset-hero .rjasset-eyebrow,
+.rjasset-section--dark .rjasset-eyebrow,
+#quem-somos .rjasset-eyebrow,
+#politicas-da-gestora .rjasset-eyebrow,
+.rjasset-section--dark .rjasset-contact__label,
+#politicas-da-gestora .rjasset-policy-card__category { color: #c7c7c7; }
+.rjasset-note,
+.rjasset-disclaimer { color: rgba(20, 20, 20, 0.72); }
+.rjasset-section--dark .rjasset-note,
+.rjasset-section--dark .rjasset-disclaimer { color: rgba(255, 255, 255, 0.72); }
+.rjasset-editorial__body { border-left-color: #5c5c5c; }
+.rjasset-contact__box {
+    border-color: rgba(199, 199, 199, 0.35);
+    background: rgba(255, 255, 255, 0.05);
+}
+:focus-visible { outline-color: #5c5c5c; }
+.rjasset-section--dark :focus-visible,
+.rjasset-hero :focus-visible,
+#quem-somos :focus-visible,
+#politicas-da-gestora :focus-visible { outline-color: #ffffff; }
