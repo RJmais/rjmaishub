@@ -1,0 +1,100 @@
+/* ============================================================
+   RJ+ Asset — Branding global (fonte: Gamma "RJ+ Asset")
+   Colar em: wp-admin → Aparência → Personalizar → CSS adicional
+   Escopo: SOMENTE cores, tipografia, botões e links.
+   Não altera layout, espaçamento estrutural, menus ou conteúdo.
+   Aplicar por seções (1→6) validando o site a cada etapa.
+   ============================================================ */
+
+/* 1. Tokens da identidade (Gamma: preto/charcoal/prata/chrome) */
+:root {
+  --rja-black: #000000;      /* fundo de seções escuras (exato do Gamma) */
+  --rja-graphite: #141414;   /* surfaces/cards sobre preto */
+  --rja-charcoal: #2b2b2b;   /* bordas, hovers, secundários */
+  --rja-gray: #cccccc;       /* fundo de seções claras (exato do Gamma) */
+  --rja-silver: #c7c7c7;     /* texto secundário sobre escuro */
+  --rja-offwhite: #f5f5f5;   /* fundo claro alternativo */
+  --rja-white: #ffffff;
+  --rja-chrome-gradient: linear-gradient(135deg, #0b0b0b 0%, #3c3c3c 55%, #6e6e6e 100%);
+  /* Fonte provisória até confirmar a família do tema Gamma */
+  --rja-font-heading: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --rja-font-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 2. Tipografia global (mapeia para as variáveis acima) */
+body {
+  font-family: var(--rja-font-body);
+  color: var(--rja-graphite);
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--rja-font-heading);
+  color: inherit; /* respeita seções escuras/claras existentes */
+  letter-spacing: -0.01em;
+}
+
+/* 3. Links (fora de menus — menus não devem ser alterados) */
+.entry-content a:not(.wp-block-button__link):not(.elementor-button),
+.site-content a:not(.wp-block-button__link):not(.elementor-button) {
+  color: var(--rja-charcoal);
+  text-decoration-color: var(--rja-silver);
+}
+.entry-content a:hover,
+.site-content a:hover { color: var(--rja-black); }
+
+/* 4. Botões — primário sólido (padrão Gamma: sólido sobre a página) */
+.wp-block-button__link,
+.wp-element-button,
+.elementor-button,
+button[type="submit"],
+input[type="submit"] {
+  background-color: var(--rja-black);
+  color: var(--rja-white);
+  border: 1px solid var(--rja-black);
+  border-radius: 6px; /* ajustar ao raio atual do tema se diferente */
+}
+.wp-block-button__link:hover,
+.wp-element-button:hover,
+.elementor-button:hover,
+button[type="submit"]:hover,
+input[type="submit"]:hover {
+  background-color: var(--rja-charcoal);
+  border-color: var(--rja-charcoal);
+  color: var(--rja-white);
+}
+
+/* 4b. Botão variante outline (equivalente ao "variant=outline" do Gamma) */
+.is-style-outline .wp-block-button__link,
+.rja-btn-outline {
+  background: transparent;
+  color: var(--rja-black);
+  border: 1px solid var(--rja-black);
+}
+.is-style-outline .wp-block-button__link:hover,
+.rja-btn-outline:hover {
+  background: var(--rja-black);
+  color: var(--rja-white);
+}
+
+/* 5. Classes utilitárias para harmonizar seções existentes
+   (aplicar como "classe CSS adicional" no bloco/section — sem mover nada) */
+.rja-section-dark {
+  background-color: var(--rja-black);
+  color: var(--rja-white);
+}
+.rja-section-dark a { color: var(--rja-silver); }
+.rja-section-light {
+  background-color: var(--rja-gray);
+  color: var(--rja-graphite);
+}
+.rja-card-outline { /* cards estilo "outline boxes" do Quem Somos */
+  background: transparent;
+  border: 1px solid var(--rja-charcoal);
+  border-radius: 8px;
+}
+.rja-section-dark .rja-card-outline { border-color: var(--rja-silver); }
+.rja-chrome { background: var(--rja-chrome-gradient); color: var(--rja-white); }
+
+/* 6. Detalhes finos */
+hr, .wp-block-separator { border-color: var(--rja-gray); background: var(--rja-gray); }
+blockquote, .wp-block-quote { border-left: 3px solid var(--rja-charcoal); color: var(--rja-charcoal); }
+::selection { background: var(--rja-black); color: var(--rja-white); }
