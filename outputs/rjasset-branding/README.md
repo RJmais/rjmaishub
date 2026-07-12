@@ -120,7 +120,7 @@ Executado ao vivo no wp-admin (tudo validado como visitante anônimo):
    `admin_init` re-semeando placeholders (revertia qualquer edição de
    conteúdo) e forçando `blog_public=0`. A desativação era pré-requisito
    para as correções persistirem. Cópia das correções de tema em
-   `theme-files/`. **Pendência de decisão**: o site continua com
-   `blog_public=0` (noindex, herdado do staging) — para liberar indexação
-   no Google: Configurações → Leitura → desmarcar "Desencorajar mecanismos
-   de busca".
+   `theme-files/`.
+7. **Indexação liberada (12/07/2026, com aprovação da cliente)**:
+   `blog_public=1` aplicado em Configurações → Leitura; validado que a tag
+   `noindex` não é mais emitida nas páginas públicas.
