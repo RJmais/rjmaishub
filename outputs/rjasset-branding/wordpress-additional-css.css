@@ -88,3 +88,14 @@
 .rjasset-hero :focus-visible,
 #quem-somos :focus-visible,
 #politicas-da-gestora :focus-visible { outline-color: #ffffff; }
+
+/* 7. Logo oficial RJ+ Asset (arquivo ja na Biblioteca de Midia, id 22) */
+.rjasset-logo {
+    display: inline-block;
+    width: 190px;
+    height: 40px;
+    background: url('https://rjasset.com.br/wp-content/uploads/2026/06/logo-rj-asset-b-04-scaled.png') left center / contain no-repeat;
+    font-size: 0;
+    color: transparent;
+    overflow: hidden;
+}

@@ -1,11 +1,14 @@
 # Checklist de aplicação no wp-admin (rjasset.com.br)
 
-> **12/07/2026 — itens 2, 4, 5 (cores) e 7 EXECUTADOS** via Customizer →
-> CSS adicional (publicado e validado). Pendências manuais restantes:
-> favicon (site não tem nenhum — item 1), re-hospedar a imagem do hero do
-> CDN do Gamma na Biblioteca de Mídia (item 5, hoje via hotlink com
-> fallback de gradiente) e confirmar fontes do tema no editor do Gamma
-> (item 3 — mantidas Fahkwang/Verdana, que o site já usa).
+> **12/07/2026 — itens 1 (logo), 2, 3, 4, 5 (cores) e 7 EXECUTADOS** via
+> Customizer → CSS adicional (publicado e validado). Logo oficial branco
+> "RJ+ Asset" aplicado no header a partir do arquivo já existente na
+> Biblioteca de Mídia (`logo-rj-asset-b-04`, id 22). Fontes confirmadas
+> pela cliente: **Fahkwang + Verdana** (já em uso — nada alterado).
+> Pendências restantes: favicon (site não tem nenhum; o logo branco não
+> serve para aba clara — precisa de versão ícone) e re-hospedar a imagem
+> do hero do CDN do Gamma na Biblioteca de Mídia (hoje hotlink com
+> fallback de gradiente).
 
 *Ordem segue as prioridades da missão. Regra de ouro: só cores/tipografia/
 imagens — nunca mover blocos, alterar menus, links, conteúdo ou estrutura.*
