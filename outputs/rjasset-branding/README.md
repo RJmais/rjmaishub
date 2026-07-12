@@ -91,3 +91,36 @@ visualmente distinta (monocromática); em dúvida, validar com a diretoria.
   usa apenas texto + a arte `Gestao-de-Recursos-Permanente-03.jpg`. Sugerido
   produzir logo branco (fundos escuros) e escuro (fundos claros) + favicon
   512×512.
+
+---
+
+## Rodada 2 — 12/07/2026 (conteúdo, formulário e pt-BR)
+
+Executado ao vivo no wp-admin (tudo validado como visitante anônimo):
+
+1. **PDFs de políticas**: os 3 arquivos enviados eram byte-idênticos aos já
+   presentes na Biblioteca de Mídia (ids 19–21). Os cards da seção "Políticas
+   da Gestora" agora linkam para eles (defaults em `functions.php`); o link
+   da CVM foi preservado. Não há mais "Documento pendente".
+2. **Formulário próprio**: criado no plugin FormLayer ("Contato RJ+ Asset",
+   shortcode `[formlayer id="1"]`), 100% em pt-BR (nome, e-mail, assunto,
+   mensagem, consentimento LGPD), notificações para
+   **atendimento@rjasset.com.br** (envio via GoSMTP). Substituiu o botão
+   Typeform no box de contato da home. Teste de envio real: OK.
+3. **Gramática/acentuação**: corrigidos todos os textos do tema
+   (front-page, header, footer, 404, página de políticas, schema/título),
+   títulos e conteúdos das páginas Política de Privacidade e Termos de Uso,
+   item de menu "Políticas" e tagline do site. Texto real do Gamma aplicado
+   na seção "Uma gestora independente" (fim do PLACEHOLDER público) + imagem
+   da seção (attachment id 23).
+4. **Logo**: agora é um `<img>` real no header (attachment id 22, via
+   `header.php` — ACF não está instalado no site); o hack CSS foi removido.
+5. **Idioma**: WPLANG já era `pt_BR`; `<html lang="pt-BR">` confirmado.
+6. **⚠️ Plugin `rjasset-staging-setup` DESATIVADO**: ele rodava em todo
+   `admin_init` re-semeando placeholders (revertia qualquer edição de
+   conteúdo) e forçando `blog_public=0`. A desativação era pré-requisito
+   para as correções persistirem. Cópia das correções de tema em
+   `theme-files/`. **Pendência de decisão**: o site continua com
+   `blog_public=0` (noindex, herdado do staging) — para liberar indexação
+   no Google: Configurações → Leitura → desmarcar "Desencorajar mecanismos
+   de busca".
