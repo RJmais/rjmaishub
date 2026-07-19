@@ -63,6 +63,21 @@ type PagesFunction<E = unknown> = (
 const FALLBACK_WORKER_ORIGIN = "https://rjmaishub-api.pilarmoret.workers.dev";
 
 /**
+ * Marca por onde a requisição passou (`X-Hub-Proxy: binding | fallback`).
+ * O caminho fallback NÃO é equivalente ao binding: o Worker passa a enxergar
+ * o IP de egress compartilhado da Cloudflare em CF-Connecting-IP, o que
+ * globaliza o rate-limit de auth (signup 3/h, login 5/min PARA TODOS os
+ * clientes juntos) e polui o audit log — por isso o header precisa existir,
+ * para o smoke test pós-deploy exigir `binding` e denunciar provisionamento
+ * incompleto do service binding no primeiro minuto.
+ */
+function withProxyMarker(res: Response, via: "binding" | "fallback"): Response {
+  const marked = new Response(res.body, res);
+  marked.headers.set("X-Hub-Proxy", via);
+  return marked;
+}
+
+/**
  * Remove o prefixo /api do pathname (mesma regra do proxy Vite) e,
  * opcionalmente, troca o origin pelo do worker de fallback. Preserva
  * querystring (fica intacta em url.search, não tocamos nela).
@@ -84,10 +99,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   if (env.API) {
     // Service Binding já resolve o destino — só precisamos ajustar o path.
     const target = rewriteTarget(request.url);
-    return env.API.fetch(new Request(target, request));
+    const res = await env.API.fetch(new Request(target, request));
+    return withProxyMarker(res, "binding");
   }
 
   // Sem binding: reescreve path E troca origin pro worker publicado.
+  console.warn(
+    "[hub-proxy] Service binding API ausente — usando fallback workers.dev; " +
+      "rate-limit degradado (IP de egress compartilhado). Provisionar o " +
+      "binding via src/web/wrangler.toml ([[services]] API -> rjmaishub-api)."
+  );
   const target = rewriteTarget(request.url, FALLBACK_WORKER_ORIGIN);
-  return fetch(new Request(target, request));
+  const res = await fetch(new Request(target, request));
+  return withProxyMarker(res, "fallback");
 };

@@ -5,6 +5,9 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  # Rebuild/deploy manual (ex.: Fase 3 do GO_LIVE_HUB.md — girar a site key do
+  # Turnstile exige rebuildar o front; `gh variable set` sozinho não rebuilda).
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -39,8 +42,15 @@ jobs:
           # de auth (comportamento atual, sem quebra).
           VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
 
+      # Deploys SÓ em main (build/lint/test seguem rodando em PRs e develop).
+      # develop deployava (a) preview do Pages carregando o service binding de
+      # PRODUÇÃO — preview criaria contas reais e dispararia emails reais — e
+      # (b) worker via "deploy --env staging" sem [env.staging] no wrangler.toml
+      # (o que geraria um worker derivado órfão, como o antigo
+      # "rjmaishub-api-production"). Reativar develop só quando existir um
+      # ambiente de staging real (worker + banco + bindings próprios).
       - name: Deploy frontend (Cloudflare Pages)
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        if: github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -49,10 +59,10 @@ jobs:
           # wrangler-action (não a pages-action@v1, legada) pra garantir que
           # functions/ + wrangler.toml deste projeto (service binding API,
           # pages_build_output_dir) sejam respeitados no deploy direct-upload.
-          command: pages deploy dist --project-name rjmaishub --branch ${{ github.ref_name }}
+          command: pages deploy dist --project-name rjmaishub --branch main
 
       - name: Deploy worker
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        if: github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -61,4 +71,4 @@ jobs:
           # main deploys the REAL worker "rjmaishub-api" (top-level config; the one
           # with secrets and traffic). "--env production" was creating a parallel
           # "rjmaishub-api-production" worker with no secrets and no traffic.
-          command: ${{ github.ref == 'refs/heads/main' && 'deploy' || 'deploy --env staging' }}
+          command: deploy

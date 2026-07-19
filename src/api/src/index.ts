@@ -18,7 +18,8 @@ export interface Env {
   // Bindings (sempre presentes)
   SESSIONS: KVNamespace;
   RATE_LIMIT: KVNamespace;
-  FILES: R2Bucket;
+  /** R2 ainda NÃO provisionado — binding comentado no wrangler.toml; tratar como ausente. */
+  FILES?: R2Bucket;
   // Vars do wrangler.toml
   APP_URL: string;
   ENVIRONMENT: string;

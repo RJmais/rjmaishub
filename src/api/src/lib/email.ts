@@ -53,7 +53,7 @@ const HEADER = `
 const FOOTER = `
   <div style="background:#EEE8DC;padding:16px;font-size:12px;color:#1d1d1d;text-align:center;">
     RJ+ Assessoria de Investimentos · Luxury is Security<br/>
-    Você recebeu este email porque possui conta no app.rjmais.com.
+    Você recebeu este email porque possui uma conta no RJ+ Hub.
   </div>`;
 
 function wrap(body: string): string {
@@ -71,7 +71,7 @@ function escapeHtml(s: string): string {
 export const emailTemplates = {
   verifyEmail(name: string, link: string) {
     return wrap(`
-      <h1 style="font-family:Georgia,serif;color:#2A3820;">Bem-vinda(o) à RJ+</h1>
+      <h1 style="font-family:Verdana,Geneva,sans-serif;color:#2A3820;">Bem-vinda(o) à RJ+</h1>
       <p>Olá, ${escapeHtml(name)}.</p>
       <p>Confirme seu email clicando no botão abaixo:</p>
       <p><a href="${link}" style="display:inline-block;background:#B8923E;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;">Confirmar email</a></p>
@@ -80,7 +80,7 @@ export const emailTemplates = {
   },
   resetPassword(name: string, link: string) {
     return wrap(`
-      <h1 style="font-family:Georgia,serif;color:#2A3820;">Redefinir senha</h1>
+      <h1 style="font-family:Verdana,Geneva,sans-serif;color:#2A3820;">Redefinir senha</h1>
       <p>Olá, ${escapeHtml(name)}.</p>
       <p>Clique no botão abaixo para criar uma nova senha. O link é válido por 1 hora.</p>
       <p><a href="${link}" style="display:inline-block;background:#B8923E;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;">Redefinir senha</a></p>
@@ -89,7 +89,7 @@ export const emailTemplates = {
   },
   securityAlert(name: string, eventLabel: string, ip: string) {
     return wrap(`
-      <h1 style="font-family:Georgia,serif;color:#2A3820;">Alerta de segurança</h1>
+      <h1 style="font-family:Verdana,Geneva,sans-serif;color:#2A3820;">Alerta de segurança</h1>
       <p>Olá, ${escapeHtml(name)}.</p>
       <p>Detectamos: <strong>${escapeHtml(eventLabel)}</strong> · IP ${escapeHtml(ip)}.</p>
       <p>Se foi você, pode ignorar. Se não, recomendamos trocar sua senha imediatamente.</p>
