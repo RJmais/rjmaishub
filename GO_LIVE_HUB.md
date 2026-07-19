@@ -320,6 +320,22 @@ mesmo que a Fase 2 tenha passado no critério de sucesso.
 
 ## Fase 8 — Hardening coordenado: WEBHOOK_SECRET (pós-go-live)
 
+> **📌 Descoberta da varredura 19/07:** os chatbots hoje **NÃO chamam** os
+> webhooks do worker. `functions/submit-lead.js` (clones locais de
+> `ana-chatbot` e `sofia-chatbot`, último commit 12/07) faz upsert **direto
+> no HubSpot** (`api.hubapi.com/crm/v3/objects/contacts`) + notificação por
+> email via Resend — zero referência a `rjmaishub` ou `X-RJ-Signature`.
+> Consequências: (a) setar `WEBHOOK_SECRET` no worker **não perde lead
+> nenhum HOJE** (os endpoints `/webhooks/*-lead` estão sem tráfego — coerente
+> com a tabela `leads` ter 0 linhas); (b) o teste E2E do passo 3 abaixo **não
+> vai passar** enquanto a integração não existir. Antes desta fase, a
+> Diretora decide: os chatbots passam a postar o lead TAMBÉM no Hub (aí
+> implementa-se a assinatura nos bots e segue-se a sequência abaixo) ou os
+> endpoints `/webhooks/*-lead` do worker ficam dormentes (e aí esta fase
+> vira só "setar o secret pra fechar a porta", sem coordenação necessária).
+> Conferir os repos remotos antes de decidir — os clones locais podem estar
+> atrás do deploy.
+
 Ativar o HMAC dos webhooks de lead **só quando os DOIS lados assinarem** —
 sequência obrigatória:
 
