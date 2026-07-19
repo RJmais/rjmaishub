@@ -27,7 +27,7 @@ export async function sendEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: params.from ?? "RJ+ Hub <no-reply@rjmais.com>",
+      from: params.from ?? "RJ+ Hub <relacionamento@rjmais.com>",
       to: params.to,
       subject: params.subject,
       html: params.html,
