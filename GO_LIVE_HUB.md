@@ -14,6 +14,21 @@
 
 ---
 
+## Conteúdo do branch (o que o merge leva a produção)
+
+O merge de `claude/hub-golive` em `main` leva **todos** os commits abaixo —
+não só os desta missão:
+
+| Commit | O quê | Origem |
+|---|---|---|
+| `a2a2821` | fix: DB client por request (`src/api/src/db/client.ts` — cliente Drizzle criado a cada request, `connect_timeout` 10s, `idle_timeout` 20s) | ⚠️ **Pré-existente**, herdado da base do branch (não é desta missão). Revisão Argus 19/07: conteúdo APROVADO tecnicamente — cliente por-request é o padrão correto em Workers (sockets não sobrevivem entre invocações; pooling real fica no Supavisor). |
+| `7ed28e7` | Ponte `/api/*` (Pages Function + `src/web/wrangler.toml` + CI wrangler-action + `APP_URL` provisório) | Esta missão |
+| `07ba542` | Remetente `relacionamento@rjmais.com` | Esta missão |
+| `e04dcb6` | Este runbook | Esta missão |
+| *(seguintes)* | Correções da revisão Argus 19/07 (A1–A8): marcador `X-Hub-Proxy` no proxy, CI só em `main` + `workflow_dispatch`, Verdana nos emails, `FILES?` opcional, runbook revisado | Esta missão (pós-Argus) — ver `git log claude/hub-golive` |
+
+---
+
 ## Fase 1 — Banco
 
 ### Causa raiz (por que isso é necessário)
@@ -28,6 +43,15 @@ mexer em `public` do projeto compartilhado.
 Escolha UMA das duas opções.
 
 ### Opção A — Projeto Supabase dedicado `rjmais-hub` (recomendada)
+
+> **⚠️ Quota do plano free (decisão antes de começar):** a org Supabase
+> "Pilars" está no plano **free**, que limita **2 projetos ativos** — e já
+> existem 2 (`rjmais-internal` + `rjmais-presenca`). A API de custo retorna
+> $0/mês para projeto novo, mas a criação do 3º pode ser **bloqueada por
+> quota**. Se bloquear, a decisão sobe pra Diretora: (i) upgrade pro plano
+> Pro (pago — decisão financeira, Nível 0), (ii) pausar um dos projetos
+> existentes, ou (iii) cair pra Opção C abaixo. Não improvisar: parar e
+> perguntar.
 
 ```bash
 # 1. Criar o projeto no dashboard Supabase (ou via MCP create_project):
@@ -60,12 +84,28 @@ psql "$DATABASE_URL" -c "\copy painel_incidentes FROM 'painel_incidentes.csv' CS
 #       no projeto antigo). Se continuar 0, não precisa copiar nada — a
 #       migration já cria a tabela vazia no projeto novo.
 
-# 5. Trocar o secret DATABASE_URL do worker real (rjmaishub-api) pro projeto novo:
+# 5. OBRIGATÓRIO — fechar a Data API (PostgREST) do projeto novo:
+#    Painel do projeto novo > Settings > API > Data API: DESABILITAR
+#    (ou, se preferir manter a API ligada, aplicar RLS deny-all em TODAS as
+#    tabelas: ALTER TABLE <t> ENABLE ROW LEVEL SECURITY; sem nenhuma policy).
+#    Motivo: por default o Supabase expõe o schema `public` via REST atrás da
+#    anon key — e essas tabelas guardam hash de senha, segredo TOTP, chat e
+#    dados LGPD. O Hub NÃO usa PostgREST (só DATABASE_URL via Drizzle), então
+#    desabilitar não quebra nada.
+
+# 6. Trocar o secret DATABASE_URL do worker real (rjmaishub-api) pro projeto novo:
 npx wrangler secret put DATABASE_URL
 # cola a MESMA connection string do passo 2/3 quando pedir o valor.
 ```
 
 ### Opção C — Schema `hub` dentro do projeto compartilhado (custo zero)
+
+> Vantagem implícita da C: schemas fora de `public` **não são expostos** pelo
+> PostgREST por default (o passo "fechar a Data API" da Opção A vira
+> desnecessário). Ainda assim a **A segue recomendada**: a C exige refactor
+> `pgSchema` + migrations novas + mais um ciclo de revisão, e mantém dados
+> sensíveis de cliente no mesmo banco do RH/Guide (blast radius e backup
+> acoplados).
 
 ```bash
 # ⚠️ Esta opção exige um passo de CÓDIGO que NÃO está neste branch
@@ -122,17 +162,35 @@ curl -i -X POST https://rjmaishub.pages.dev/api/auth/login \
   -d '{}'
 ```
 
-Esperado: **HTTP 400** com corpo JSON (erro de validação Zod — falta
-`email`/`password`/`turnstileToken`).
+Esperado (as DUAS condições, não só a primeira):
+
+1. **HTTP 400** com corpo JSON (erro de validação Zod — falta
+   `email`/`password`/`turnstileToken`);
+2. header **`X-Hub-Proxy: binding`** na resposta.
 
 Se vier **HTML** (o `index.html` do SPA) ou **405** → a ponte não está no ar;
 revisar `src/web/functions/api/[[path]].ts`, `src/web/wrangler.toml` (service
 binding `API`) e o step de deploy no CI antes de prosseguir pras próximas
 fases.
 
+Se vier `X-Hub-Proxy: fallback` → a ponte "funciona", mas o **service binding
+não foi provisionado** — o worker está enxergando o IP de egress da Cloudflare
+em vez do IP do cliente, o que **globaliza o rate-limit de auth** (signup 3/h
+e login 5/min compartilhados por TODOS os clientes) e polui o audit log.
+**Fallback NÃO conta como sucesso da Fase 2.** Conferir no dashboard:
+projeto Pages `rjmaishub` > Settings > Bindings > `API → rjmaishub-api`
+(provisionado pelo primeiro deploy com o `src/web/wrangler.toml` novo).
+
 ---
 
 ## Fase 3 — Turnstile produção
+
+> **⚠️ A ORDEM AQUI É CRÍTICA.** O front deployado hoje usa a site key de
+> TESTE (fallback hardcoded). Se o Secret Key real for colocado no worker
+> **antes** de o front ser rebuildado com a site key real, os tokens de teste
+> passam a falhar contra o siteverify real → **signup e login ficam 100%
+> bloqueados** até alguém empurrar um novo build. E atenção:
+> `gh variable set` **NÃO rebuilda nada sozinho** — o rebuild é o passo 3.
 
 ```bash
 # 1. Dashboard Cloudflare > Turnstile > Add site.
@@ -142,10 +200,26 @@ fases.
 # 2. Site Key (é PÚBLICA) -> GitHub Actions variable (não secret):
 gh variable set VITE_TURNSTILE_SITE_KEY --body "0x4AAAAAAA...." --repo RJmais/rjmaishub
 
-# 3. Secret Key -> wrangler secret no worker:
+# 3. REBUILDAR o front pra site key real entrar no bundle:
+gh workflow run Deploy --repo RJmais/rjmaishub --ref main
+#    (workflow_dispatch adicionado neste branch; alternativa: qualquer push
+#    em main.)
+
+# 4. CONFIRMAR que a site key real está no ar (não a de teste "1x000...AA"):
+curl -s https://rjmaishub.pages.dev/assets/ -o /dev/null; \
+curl -s https://rjmaishub.pages.dev | grep -o 'src="/assets/[^"]*\.js"' | head -1
+#    baixar o bundle JS indicado e conferir:
+#    curl -s https://rjmaishub.pages.dev/assets/<bundle>.js | grep -c "1x00000000000000000000AA"
+#    Esperado: 0 ocorrências (a key real substituiu o fallback).
+
+# 5. SÓ ENTÃO: Secret Key -> wrangler secret no worker:
 cd src/api
 npx wrangler secret put TURNSTILE_SECRET
 # cola o Secret Key real do Turnstile.
+
+# 6. Smoke test de signup NA MESMA JANELA (não deixar pra depois):
+#    abrir https://rjmaishub.pages.dev/signup, resolver o captcha real e
+#    criar uma conta de teste — tem que passar.
 ```
 
 **⚠️ NUNCA colar um valor começando com `1x` em produção.** `src/api/src/lib/turnstile.ts`
@@ -157,7 +231,7 @@ Backlog abaixo). Os secrets de teste oficiais do Turnstile começam todos com
 
 ---
 
-## Fase 4 — Secrets faltantes
+## Fase 4 — Secret faltante: TOTP_ENC_KEY
 
 ```bash
 cd src/api
@@ -166,19 +240,19 @@ cd src/api
 openssl rand -base64 32
 npx wrangler secret put TOTP_ENC_KEY
 # cola o valor gerado acima
-
-# WEBHOOK_SECRET — HMAC compartilhado com os webhooks de lead dos chatbots
-openssl rand -base64 32
-npx wrangler secret put WEBHOOK_SECRET
-# cola o valor gerado acima
 ```
 
-Depois de setar `WEBHOOK_SECRET`: **espelhar o MESMO valor** nos workers dos
-chatbots Ana e Sofia (repos `RJmais/ana-chatbot` e `RJmais/sofia-chatbot`) —
-eles assinam os webhooks de lead com `X-RJ-Signature: sha256=<hex>` usando
-esse segredo; se os dois lados não baterem, os webhooks passam a ser
-rejeitados (ou aceitos como "não assinado", dependendo do rollout faseado H1
-já em produção nesses handlers).
+Seguro de ativar a qualquer momento: `decryptTotpSecret()`
+(`src/api/src/lib/crypto.ts`) detecta segredos legados em plaintext pela
+ausência de `:` — usuários que já tiverem 2FA não quebram.
+
+> **`WEBHOOK_SECRET` NÃO entra nesta fase.** Foi movido pra Fase 8 —
+> confirmado no código (`src/api/src/routes/webhooks/anaLead.ts` e
+> `sofiaLead.ts`): quando `WEBHOOK_SECRET` está setado no worker, requisição
+> sem assinatura válida é **REJEITADA** (não "aceita como não assinada").
+> Setar o secret antes de os chatbots Ana/Sofia assinarem = **perda
+> silenciosa de 100% dos leads** (só um `console.warn` que ninguém olha).
+> E ele não é pré-requisito de nada do go-live do Hub.
 
 ---
 
@@ -234,10 +308,44 @@ mesmo que a Fase 2 tenha passado no critério de sucesso.
 # 3. Reverter o APP_URL provisório (src/api/wrangler.toml):
 #    APP_URL = "https://app.rjmais.com"
 #    (e remover o comentário # TODO associado)
+#    ⚠️ Editar o toml sozinho NÃO muda produção — a reversão só tem efeito
+#    com COMMIT + PUSH em main (o CI redeploya o worker). Sem isso, os links
+#    de email continuam saindo com o domínio antigo.
 
 # 4. Adicionar app.rjmais.com como domínio adicional no widget Turnstile
 #    (Fase 3) — já devia estar cadastrado desde o início, só confirmar.
 ```
+
+---
+
+## Fase 8 — Hardening coordenado: WEBHOOK_SECRET (pós-go-live)
+
+Ativar o HMAC dos webhooks de lead **só quando os DOIS lados assinarem** —
+sequência obrigatória:
+
+```bash
+# 1. VERIFICAR nos repos dos chatbots se o código de assinatura existe e está
+#    ativo (procurar por "X-RJ-Signature" / HMAC no código que POSTa o lead
+#    pro rjmaishub):
+#      RJmais/ana-chatbot   (ana-rjmais.pages.dev)
+#      RJmais/sofia-chatbot (chat.rjpeoplecare.com)
+#    Se NÃO existir: implementar + deployar nos chatbots ANTES de qualquer
+#    secret no worker do Hub.
+
+# 2. Gerar o segredo e setar nos TRÊS lugares NA MESMA JANELA:
+openssl rand -base64 32
+cd src/api && npx wrangler secret put WEBHOOK_SECRET          # worker do Hub
+#    + mesmo valor como secret/env nos deploys de ana-chatbot e sofia-chatbot
+
+# 3. Teste E2E imediato: 1 lead de teste por bot (conversa com a Ana e com a
+#    Sofia até disparar captura de lead) e conferir que chegou (tabela leads
+#    + HubSpot). Lead rejeitado = reverter o secret do worker na hora
+#    (wrangler secret delete WEBHOOK_SECRET) e investigar.
+```
+
+**Por que fora do go-live:** com o secret setado no worker, requisição sem
+assinatura válida é REJEITADA (confirmado em `anaLead.ts`/`sofiaLead.ts`) —
+ativar sem coordenação = perda silenciosa de 100% dos leads Ana/Sofia.
 
 ---
 
@@ -248,10 +356,12 @@ mesmo que a Fase 2 tenha passado no critério de sucesso.
   explícito** antes de rodar `wrangler delete`.
 - `ENVIRONMENT` ainda como `"development"` no worker real (`src/api/wrangler.toml`)
   — ajustar pra `"production"` quando o go-live for considerado estável.
-- Seção `[env.staging]` inexistente no `wrangler.toml` da API, mas o CI já
-  roda `deploy --env staging` no push pra `develop` — hoje isso provavelmente
-  falha ou cai num environment implícito; precisa de decisão (criar
-  `[env.staging]` de verdade ou simplificar o CI pra não deployar staging).
+- Ambiente de staging real: os deploys de `develop` foram **desligados neste
+  branch** (correção A5 da revisão Argus — preview do Pages carregaria o
+  service binding de PRODUÇÃO, e o worker rodava `deploy --env staging` sem
+  `[env.staging]` no toml). Quando staging fizer falta, criar de verdade:
+  worker próprio + banco próprio + bindings próprios + `[env.staging]` no
+  wrangler.toml, e só então reativar o deploy de `develop` no CI.
 - M4 da auditoria de segurança (`SECURITY_AUDIT — 2026-07-06.md`): PBKDF2 com
   100k iterações, subir pra 600k com re-hash oportunista no login.
 - M6 da auditoria: bypass de Turnstile por prefixo `1x` no secret
