@@ -206,7 +206,6 @@ gh workflow run Deploy --repo RJmais/rjmaishub --ref main
 #    em main.)
 
 # 4. CONFIRMAR que a site key real está no ar (não a de teste "1x000...AA"):
-curl -s https://rjmaishub.pages.dev/assets/ -o /dev/null; \
 curl -s https://rjmaishub.pages.dev | grep -o 'src="/assets/[^"]*\.js"' | head -1
 #    baixar o bundle JS indicado e conferir:
 #    curl -s https://rjmaishub.pages.dev/assets/<bundle>.js | grep -c "1x00000000000000000000AA"
@@ -246,13 +245,15 @@ Seguro de ativar a qualquer momento: `decryptTotpSecret()`
 (`src/api/src/lib/crypto.ts`) detecta segredos legados em plaintext pela
 ausência de `:` — usuários que já tiverem 2FA não quebram.
 
-> **`WEBHOOK_SECRET` NÃO entra nesta fase.** Foi movido pra Fase 8 —
-> confirmado no código (`src/api/src/routes/webhooks/anaLead.ts` e
-> `sofiaLead.ts`): quando `WEBHOOK_SECRET` está setado no worker, requisição
-> sem assinatura válida é **REJEITADA** (não "aceita como não assinada").
-> Setar o secret antes de os chatbots Ana/Sofia assinarem = **perda
-> silenciosa de 100% dos leads** (só um `console.warn` que ninguém olha).
-> E ele não é pré-requisito de nada do go-live do Hub.
+> **`WEBHOOK_SECRET` NÃO entra nesta fase.** Foi movido pra Fase 8. No
+> código (`src/api/src/routes/webhooks/anaLead.ts` e `sofiaLead.ts`), com o
+> secret setado toda requisição sem assinatura válida é **REJEITADA** — e a
+> varredura de 19/07 (ver Fase 8) mostrou que os chatbots hoje **nem chamam**
+> esses endpoints (lead vai direto ao HubSpot), então setar o secret não
+> perde lead nenhum. O que falta é a **decisão da Diretora** na Fase 8 sobre
+> a integração; inclusive, como os endpoints estão no ar abertos e sem
+> tráfego legítimo, a revisão Argus recomenda considerar setá-lo **já no
+> go-live** só pra fechar essa porta (injeção de leads falsos).
 
 ---
 
