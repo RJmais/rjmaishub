@@ -10,7 +10,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "development"
-APP_URL = "https://app.rjmais.com"
+# TODO: voltar para https://app.rjmais.com quando o DNS/custom domain existir
+APP_URL = "https://rjmaishub.pages.dev"
 SUPABASE_URL = "https://gkfodtylflcpsqzshrbu.supabase.co"
 
 # KV — sessões cache, rate limit, feature flags

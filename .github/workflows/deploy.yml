@@ -33,16 +33,23 @@ jobs:
 
       - name: Build web
         run: npm run build:web
+        env:
+          # Site key é pública (não é secret); sem essa var no repo GitHub, o
+          # build cai no fallback de teste "1x00..." já hardcoded nas páginas
+          # de auth (comportamento atual, sem quebra).
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Deploy frontend (Cloudflare Pages)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: rjmaishub
-          directory: src/web/dist
-          branch: ${{ github.ref_name }}
+          workingDirectory: src/web
+          # wrangler-action (não a pages-action@v1, legada) pra garantir que
+          # functions/ + wrangler.toml deste projeto (service binding API,
+          # pages_build_output_dir) sejam respeitados no deploy direct-upload.
+          command: pages deploy dist --project-name rjmaishub --branch ${{ github.ref_name }}
 
       - name: Deploy worker
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
