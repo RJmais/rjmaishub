@@ -1,0 +1,14 @@
+# Config Cloudflare Pages do RJ+ Hub (frontend).
+# "$schema" ajuda autocomplete/validação no editor (ver docs Cloudflare Pages Functions).
+"$schema" = "./node_modules/wrangler/config-schema.json"
+
+name = "rjmaishub"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-04-01"
+
+# Service Binding pro Worker da API — consumido pela Pages Function
+# functions/api/[[path]].ts. Chamada interna (sem sair pra internet), usada
+# como ponte /api/* -> rotas do Worker (que não tem prefixo /api).
+[[services]]
+binding = "API"
+service = "rjmaishub-api"
