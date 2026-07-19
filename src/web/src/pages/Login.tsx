@@ -5,7 +5,7 @@ import { apiFetch } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
 const SITE_KEY =
-  import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
+  import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "0x4AAAAAAD5TkU2cC3N1hJfV";
 
 export default function Login() {
   const navigate = useNavigate();

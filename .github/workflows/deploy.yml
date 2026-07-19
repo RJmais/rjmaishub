@@ -36,11 +36,11 @@ jobs:
 
       - name: Build web
         run: npm run build:web
-        env:
-          # Site key é pública (não é secret); sem essa var no repo GitHub, o
-          # build cai no fallback de teste "1x00..." já hardcoded nas páginas
-          # de auth (comportamento atual, sem quebra).
-          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+        # Turnstile site key: é PÚBLICA e vive hardcoded como fallback nas
+        # páginas de auth (Login/Signup/EsqueciSenha). Não injetar
+        # VITE_TURNSTILE_SITE_KEY vazia aqui — expressão vazia vira env "" e
+        # o ?? não cai no fallback (?? só pega null/undefined), quebrando o
+        # widget silenciosamente.
 
       # Deploys SÓ em main (build/lint/test seguem rodando em PRs e develop).
       # develop deployava (a) preview do Pages carregando o service binding de
