@@ -44,14 +44,18 @@ Escolha UMA das duas opções.
 
 ### Opção A — Projeto Supabase dedicado `rjmais-hub` (recomendada)
 
-> **⚠️ Quota do plano free (decisão antes de começar):** a org Supabase
-> "Pilars" está no plano **free**, que limita **2 projetos ativos** — e já
-> existem 2 (`rjmais-internal` + `rjmais-presenca`). A API de custo retorna
-> $0/mês para projeto novo, mas a criação do 3º pode ser **bloqueada por
-> quota**. Se bloquear, a decisão sobe pra Diretora: (i) upgrade pro plano
-> Pro (pago — decisão financeira, Nível 0), (ii) pausar um dos projetos
-> existentes, ou (iii) cair pra Opção C abaixo. Não improvisar: parar e
-> perguntar.
+> **⚠️ Custo de projeto novo (decisão antes de começar) — ATUALIZADO 20/07/2026:**
+> a org Supabase "Pilars" está no plano **Pro** (verificado via API nesta data;
+> a nota anterior deste bloco dizia "free, limite de 2 projetos ativos" e está
+> **desatualizada** — o bloqueio de quota não existe mais). O que existe agora é
+> **custo**: a API de custo retorna **US$ 10/mês recorrentes** por projeto
+> adicional. Logo a decisão que sobe pra Diretora deixou de ser "destrava a
+> quota?" e passou a ser financeira: (i) aprovar os US$ 10/mês da Opção A, ou
+> (ii) cair pra Opção C abaixo (custo zero, com o trade-off já descrito).
+> Não improvisar: parar e perguntar.
+>
+> *Correção feita durante a missão RJ+ Cliente 360, que enfrentou a mesma
+> decisão de projeto dedicado e verificou o plano/custo reais no painel.*
 
 ```bash
 # 1. Criar o projeto no dashboard Supabase (ou via MCP create_project):
