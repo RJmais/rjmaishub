@@ -12,6 +12,20 @@ class ApiError extends Error {
   }
 }
 
+/**
+ * True quando a API recusou o captcha (`verification_failed`). As telas de auth
+ * usam isso pra explicar que o desafio expirou — em vez de acusar credencial
+ * errada — e pra remontar o widget, já que o token do Turnstile é de uso único.
+ */
+export function isCaptchaError(err: unknown): boolean {
+  const body = (err as { body?: unknown } | null)?.body;
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { error?: string }).error === "verification_failed"
+  );
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}

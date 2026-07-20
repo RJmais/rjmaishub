@@ -98,13 +98,17 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
 
     const body = c.req.valid("json");
 
-    const turnstileOk = await verifyTurnstileToken(
+    const turnstile = await verifyTurnstileToken(
       body.turnstileToken,
-      c.env.TURNSTILE_SECRET,
-      ip
+      c.env.TURNSTILE_SECRET
     );
-    if (!turnstileOk) {
-      await logAudit(c.env, { action: "auth.signup.turnstile_failed", ip, userAgent: ua });
+    if (!turnstile.ok) {
+      await logAudit(c.env, {
+        action: "auth.signup.turnstile_failed",
+        ip,
+        userAgent: ua,
+        meta: { codes: turnstile.codes },
+      });
       return c.json({ error: "verification_failed" }, 400);
     }
 
@@ -265,12 +269,19 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
 
     const body = c.req.valid("json");
 
-    const turnstileOk = await verifyTurnstileToken(
+    const turnstile = await verifyTurnstileToken(
       body.turnstileToken,
-      c.env.TURNSTILE_SECRET,
-      ip
+      c.env.TURNSTILE_SECRET
     );
-    if (!turnstileOk) return c.json({ error: "verification_failed" }, 400);
+    if (!turnstile.ok) {
+      await logAudit(c.env, {
+        action: "auth.login.turnstile_failed",
+        ip,
+        userAgent: ua,
+        meta: { codes: turnstile.codes },
+      });
+      return c.json({ error: "verification_failed" }, 400);
+    }
 
     const db = getDb(c.env);
     const [user] = await db
@@ -478,12 +489,19 @@ export const auth = new Hono<{ Bindings: Env; Variables: { user: AuthUser; userI
     if (!ok) return c.json({ error: "rate_limited" }, 429);
 
     const body = c.req.valid("json");
-    const turnstileOk = await verifyTurnstileToken(
+    const turnstile = await verifyTurnstileToken(
       body.turnstileToken,
-      c.env.TURNSTILE_SECRET,
-      ip
+      c.env.TURNSTILE_SECRET
     );
-    if (!turnstileOk) return c.json({ error: "verification_failed" }, 400);
+    if (!turnstile.ok) {
+      await logAudit(c.env, {
+        action: "auth.forgot_password.turnstile_failed",
+        ip,
+        userAgent: c.req.header("User-Agent") ?? "",
+        meta: { codes: turnstile.codes },
+      });
+      return c.json({ error: "verification_failed" }, 400);
+    }
 
     const db = getDb(c.env);
     const [user] = await db

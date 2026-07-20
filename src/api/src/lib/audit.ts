@@ -29,7 +29,7 @@ export async function logAudit(env: Env, entry: AuditEntry): Promise<void> {
       ip: entry.ip ?? null,
       userAgent: entry.userAgent ?? null,
       metaJson: entry.meta ? JSON.stringify(entry.meta) : null,
-      createdAt: Math.floor(Date.now() / 1000),
+      createdAt: Date.now(),
     });
   } catch (e) {
     console.error("audit_log insert failed:", e, entry);

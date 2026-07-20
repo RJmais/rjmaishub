@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Turnstile } from "react-turnstile";
-import { apiFetch } from "../lib/api";
+import { apiFetch, isCaptchaError } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
 const SITE_KEY =
@@ -13,6 +13,9 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
+  // Ver comentário em Signup.tsx: token do Turnstile é de uso único e expira —
+  // sem remontar o widget, toda retentativa reenvia um token já queimado.
+  const [widgetKey, setWidgetKey] = useState(0);
   const [tempToken, setTempToken] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,8 +42,14 @@ export default function Login() {
         await refresh(); // pega user completo via /auth/me
         navigate("/dashboard", { replace: true });
       }
-    } catch {
-      setError("Email ou senha incorretos.");
+    } catch (err) {
+      setError(
+        isCaptchaError(err)
+          ? "A verificação de segurança expirou. Ela já foi renovada — clique em “Entrar” de novo."
+          : "Email ou senha incorretos."
+      );
+      setToken("");
+      setWidgetKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -100,7 +109,14 @@ export default function Login() {
               className="mt-1 w-full rounded-md border border-rj-beige-accent px-3 py-2 focus:border-rj-gold"
             />
           </label>
-          <Turnstile sitekey={SITE_KEY} onVerify={setToken} />
+          <Turnstile
+            key={widgetKey}
+            sitekey={SITE_KEY}
+            onVerify={setToken}
+            onExpire={() => setToken("")}
+            onError={() => setToken("")}
+            refreshExpired="auto"
+          />
           {error && (
             <p role="alert" className="text-sm text-red-700">
               {error}

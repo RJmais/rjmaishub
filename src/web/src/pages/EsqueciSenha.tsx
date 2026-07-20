@@ -9,6 +9,8 @@ const SITE_KEY =
 export default function EsqueciSenha() {
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
+  // Ver comentário em Signup.tsx: token do Turnstile é de uso único e expira.
+  const [widgetKey, setWidgetKey] = useState(0);
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -21,6 +23,10 @@ export default function EsqueciSenha() {
         body: JSON.stringify({ email, turnstileToken: token }),
       });
     } finally {
+      // Token consumido (ou recusado): remonta o widget pra um novo envio não
+      // reaproveitar um token queimado.
+      setToken("");
+      setWidgetKey((k) => k + 1);
       setSent(true);
       setLoading(false);
     }
@@ -52,7 +58,14 @@ export default function EsqueciSenha() {
               className="mt-1 w-full rounded-md border border-rj-beige-accent px-3 py-2 focus:border-rj-gold"
             />
           </label>
-          <Turnstile sitekey={SITE_KEY} onVerify={setToken} />
+          <Turnstile
+            key={widgetKey}
+            sitekey={SITE_KEY}
+            onVerify={setToken}
+            onExpire={() => setToken("")}
+            onError={() => setToken("")}
+            refreshExpired="auto"
+          />
           <button
             type="submit"
             disabled={loading || !token || !email}

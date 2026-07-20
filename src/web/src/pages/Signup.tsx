@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Turnstile } from "react-turnstile";
-import { apiFetch } from "../lib/api";
+import { apiFetch, isCaptchaError } from "../lib/api";
 
 const SITE_KEY =
   import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "0x4AAAAAAD5TkU2cC3N1hJfV";
@@ -13,6 +13,10 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [token, setToken] = useState("");
+  // Remonta o widget do captcha a cada erro: o token do Turnstile é de uso
+  // único e expira em ~5min, então reenviar o mesmo token depois de uma falha
+  // é sempre recusado ("timeout-or-duplicate") — clicar de novo nunca resolvia.
+  const [widgetKey, setWidgetKey] = useState(0);
   const [privacy, setPrivacy] = useState(false);
   const [terms, setTerms] = useState(false);
   const [aiChat, setAiChat] = useState(false);
@@ -50,7 +54,15 @@ export default function Signup() {
       });
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível criar sua conta agora.");
+      setError(
+        isCaptchaError(err)
+          ? "A verificação de segurança expirou. Ela já foi renovada — clique em “Criar conta” de novo."
+          : err instanceof Error
+            ? err.message
+            : "Não foi possível criar sua conta agora."
+      );
+      setToken("");
+      setWidgetKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -143,7 +155,14 @@ export default function Signup() {
           />
         </label>
 
-        <Turnstile sitekey={SITE_KEY} onVerify={setToken} />
+        <Turnstile
+          key={widgetKey}
+          sitekey={SITE_KEY}
+          onVerify={setToken}
+          onExpire={() => setToken("")}
+          onError={() => setToken("")}
+          refreshExpired="auto"
+        />
 
         <fieldset className="border border-rj-beige-accent rounded-md p-3 space-y-2 text-sm">
           <legend className="px-1 text-rj-green-dark font-medium">
